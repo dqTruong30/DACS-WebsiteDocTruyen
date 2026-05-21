@@ -1,0 +1,121 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Đăng Nhập";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<style>
+    /* 1. Divider "Hoặc kết nối với" - Dùng màu xám sáng cho chắc ăn */
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 25px 0;
+        color: #a4a4a4 !important;
+        font-size: 0.9rem;
+    }
+
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #3a3a3a !important;
+        }
+
+    /* 2. Nút Google - Chốt màu Xanh Dương */
+    .btn-external.btn-google {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        width: 100%;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        /* Màu chủ đạo: Xanh dương chuẩn Google */
+        background-color: transparent !important;
+        border: 2px solid #4285F4 !important;
+        color: #4285F4 !important;
+    }
+
+        /* Khi di chuột vào thì đổi nền xanh chữ trắng cho nó máu */
+        .btn-external.btn-google:hover {
+            background-color: #4285F4 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
+        }
+
+        /* Ép cái chữ span bên trong phải theo màu xanh luôn */
+        .btn-external.btn-google span {
+            color: inherit !important;
+        }
+
+    .btn-external img {
+        width: 20px;
+        height: 20px;
+    }
+</style>
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-tabs">
+            <span class="auth-tab is-active">Đăng Nhập</span>
+            <a asp-page="./Register" class="auth-tab">Đăng Ký</a>
+        </div>
+
+        <form id="account" method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div>
+                <label asp-for="Input.Email" class="auth-label">Tên đăng nhập hoặc Email</label>
+                <input asp-for="Input.Email" class="field" placeholder="Nhập tài khoản hoặc email" />
+                <span asp-validation-for="Input.Email" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label asp-for="Input.Password" class="auth-label">Mật khẩu</label>
+                <input asp-for="Input.Password" class="field" placeholder="********" />
+                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+            </div>
+
+            <div class="auth-row">
+                <label class="mini-note">
+                    <input asp-for="Input.RememberMe" class="me-2" />
+                    Ghi nhớ tôi
+                </label>
+                <a id="forgot-password" asp-page="./ForgotPassword" class="mini-note">Quên mật khẩu?</a>
+            </div>
+
+            <button id="login-submit" type="submit" class="btn-neon w-100">Đăng Nhập</button>
+        </form>
+
+
+        <div class="auth-divider">Hoặc kết nối với</div>
+
+        <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+            <div class="external-providers">
+                @foreach (var provider in Model.ExternalLogins!)
+                {
+                    <button type="submit" class="btn-external btn-@provider.Name.ToLower()"
+                            name="provider" value="@provider.Name"
+                            title="Đăng nhập bằng @provider.DisplayName">
+                        @if (provider.Name == "Google")
+                        {
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo" />
+                        }
+                        <span>Đăng nhập với @provider.DisplayName</span>
+                    </button>
+                }
+            </div>
+        </form>
+
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

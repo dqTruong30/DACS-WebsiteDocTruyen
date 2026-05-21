@@ -1,0 +1,89 @@
+@model HutechNovel.Models.Truyen
+@using HutechNovel.Models
+
+@{
+    ViewData["Title"] = "Thêm Truyện Mới";
+    var danhSachThe = ViewBag.DanhSachThe as List<The> ?? new List<The>();
+}
+
+
+<section class="panel">
+    <div class="section-kicker">Quản lý truyện</div>
+    <h1 class="page-title">Đăng truyện mới</h1>
+
+    <form asp-area="Admin" asp-controller="QuanLyTruyen" asp-action="ThemMoi"
+          method="post" enctype="multipart/form-data" class="search-filters mt-4">
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="ModelOnly" class="status-banner is-danger"
+             style="flex: 1 1 100%;"></div>
+
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Tên truyện <span class="text-danger">*</span></label>
+            <input asp-for="TieuDe" class="field"
+                   placeholder="Ví dụ: Đấu Phá Thương Khung..." required />
+            <span asp-validation-for="TieuDe" class="text-danger small"></span>
+        </div>
+
+        <div style="flex: 1 1 48%; margin-bottom: 15px; position: relative;">
+            <label class="fw-bold mb-2">Tác giả <span class="text-danger">*</span></label>
+            <input type="hidden" asp-for="MaTacGia" id="hiddenMaTacGia" value="0" />
+            <input type="text"
+                   name="tenTacGiaMoi"
+                   id="inputTenTacGia"
+                   class="field"
+                   placeholder="Gõ tìm hoặc nhập tên tác giả mới..."
+                   autocomplete="off"
+                   required />
+            <ul id="dropdownTacGia" class="tacgia-dropdown" style="display:none;"></ul>
+        </div>
+
+        <div style="flex: 1 1 48%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Trạng thái</label>
+            <select asp-for="TrangThai"
+                    asp-items="Html.GetEnumSelectList<TrangThaiTruyen>()"
+                    class="field-select" style="width:100%;"></select>
+        </div>
+
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Thể loại (Tags)</label>
+            <div style="position: relative;">
+                <input type="text" id="inputTimThe" class="field"
+                       placeholder="Gõ để tìm hoặc thêm thẻ mới..." autocomplete="off" />
+                <ul id="dropdownThe" class="tacgia-dropdown" style="display:none;"></ul>
+            </div>
+            <div id="selectedTagsContainer" class="mt-2" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+
+        <div class="upload-group" style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Ảnh bìa truyện</label>
+            <div class="d-flex gap-3 flex-wrap">
+                <div style="flex: 1 1 48%;">
+                    <small class="muted d-block mb-1">Cách 1: Tải ảnh từ máy tính (JPG/PNG)</small>
+                    <input type="file" name="fileAnhBia" id="fileAnhBia"
+                           class="field" accept="image/*" />
+                </div>
+                <div style="flex: 1 1 48%;">
+                    <small class="muted d-block mb-1">Cách 2: Dán đường dẫn Link ảnh</small>
+                    <input type="text" name="linkAnhBia" id="linkAnhBia"
+                           class="field" placeholder="https://..." />
+                </div>
+            </div>
+        </div>
+
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Tóm tắt / Giới thiệu nội dung</label>
+            <textarea asp-for="MoTa" class="field-textarea" style="min-height:220px;" placeholder="Nhập tóm tắt nội dung truyện..."></textarea>
+        </div>
+
+        <div class="d-flex gap-3 mt-4" style="flex: 1 1 100%;">
+            <button class="btn-neon" type="submit" style="min-width:150px;">Lưu truyện</button>
+            <a class="btn-ghost" asp-action="Index">Quay lại</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/admin-novel.js" asp-append-version="true"></script>
+}

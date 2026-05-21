@@ -1,0 +1,205 @@
+<div class="ai-chatbox" id="aiChatBox">
+    <button class="ai-chatbox__launcher" id="aiChatLauncher" type="button" aria-label="Mở trợ lý HutechNovel">
+        <i class="fas fa-comments"></i>
+    </button>
+
+    <section class="ai-chatbox__panel" id="aiChatPanel" aria-live="polite">
+        <header class="ai-chatbox__header">
+            <div>
+                <strong>Trợ lý HutechNovel</strong>
+                <span>Hỏi về web hoặc tìm truyện</span>
+            </div>
+            <button class="ai-chatbox__close" id="aiChatClose" type="button" aria-label="Đóng trợ lý">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </header>
+
+        <div class="ai-chatbox__messages" id="aiChatMessages">
+            <div class="ai-message ai-message--bot">
+                Xin chào! Mình có thể giúp bạn tìm truyện, lọc theo thể loại/trạng thái, tìm theo tóm tắt, tên chương và hướng dẫn các chức năng trên web.
+            </div>
+            <div class="ai-chatbox__suggestions">
+                <button type="button" data-ai-suggestion="Tìm truyện đô thị">Tìm truyện đô thị</button>
+                <button type="button" data-ai-suggestion="Đang tiến hành">Đang tiến hành</button>
+                <button type="button" data-ai-suggestion="Tìm tên chương khởi đầu mới">Tên chương</button>
+            </div>
+        </div>
+
+        <form class="ai-chatbox__form" id="aiChatForm">
+            <input id="aiChatInput" type="text" autocomplete="off" placeholder="Nhập câu hỏi..." />
+            <button type="submit" aria-label="Gửi câu hỏi">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </section>
+</div>
+
+<script>
+    (() => {
+        const root = document.getElementById("aiChatBox");
+        const launcher = document.getElementById("aiChatLauncher");
+        const closeButton = document.getElementById("aiChatClose");
+        const form = document.getElementById("aiChatForm");
+        const input = document.getElementById("aiChatInput");
+        const messages = document.getElementById("aiChatMessages");
+        if (!root || !launcher || !form || !input || !messages) return;
+
+        const storageKey = "hutechnovel-ai-chat-history";
+        const maxHistoryAge = 3 * 60 * 60 * 1000;
+        let chatHistory = [];
+
+        const saveHistory = () => {
+            sessionStorage.setItem(storageKey, JSON.stringify({
+                savedAt: Date.now(),
+                items: chatHistory
+            }));
+        };
+
+        const escapeHtml = (value) => {
+            const div = document.createElement("div");
+            div.textContent = value ?? "";
+            return div.innerHTML;
+        };
+
+        const appendMessage = (text, type, shouldSave = true) => {
+            const item = document.createElement("div");
+            item.className = `ai-message ai-message--${type}`;
+            item.textContent = text;
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight;
+
+            if (shouldSave) {
+                chatHistory.push({ type, text });
+                saveHistory();
+            }
+
+            return item;
+        };
+
+        const appendResults = (data, shouldSave = true) => {
+            if (Array.isArray(data.stories) && data.stories.length > 0) {
+                const list = document.createElement("div");
+                list.className = "ai-result-list";
+
+                data.stories.forEach(story => {
+                    const link = document.createElement("a");
+                    link.className = "ai-result-card";
+                    link.href = story.url;
+                    link.innerHTML = `
+                        <strong>${escapeHtml(story.title)}</strong>
+                        <span>${escapeHtml(story.author || "Đang cập nhật")} · ${story.chapters || 0} chương · ${story.views || 0} lượt xem</span>
+                    `;
+                    list.appendChild(link);
+                });
+
+                messages.appendChild(list);
+            }
+
+            if (Array.isArray(data.links) && data.links.length > 0) {
+                const links = document.createElement("div");
+                links.className = "ai-link-row";
+
+                data.links.forEach(item => {
+                    const link = document.createElement("a");
+                    link.href = item.url;
+                    link.textContent = item.label;
+                    links.appendChild(link);
+                });
+
+                messages.appendChild(links);
+            }
+
+            messages.scrollTop = messages.scrollHeight;
+
+            if (shouldSave && ((data.stories?.length || 0) > 0 || (data.links?.length || 0) > 0)) {
+                chatHistory.push({ type: "results", text: "", data });
+                saveHistory();
+            }
+        };
+
+        const loadHistory = () => {
+            try {
+                const raw = sessionStorage.getItem(storageKey);
+                if (!raw) return;
+
+                const saved = JSON.parse(raw);
+                if (!saved?.savedAt || Date.now() - saved.savedAt > maxHistoryAge) {
+                    sessionStorage.removeItem(storageKey);
+                    return;
+                }
+
+                chatHistory = Array.isArray(saved.items) ? saved.items : [];
+                if (!chatHistory.length) return;
+
+                messages.innerHTML = "";
+                chatHistory.forEach(item => {
+                    if (item.type === "results") {
+                        appendResults(item.data || {}, false);
+                    } else {
+                        appendMessage(item.text, item.type, false);
+                    }
+                });
+            } catch {
+                sessionStorage.removeItem(storageKey);
+                chatHistory = [];
+            }
+        };
+
+        const sendMessage = async (message) => {
+            const text = message.trim();
+            if (!text) return;
+
+            appendMessage(text, "user");
+            input.value = "";
+
+            const typing = appendMessage("Đang trả lời...", "bot", false);
+            try {
+                const response = await fetch("/api/ChatBot/Ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text })
+                });
+
+                if (!response.ok) {
+                    typing.textContent = "Mình chưa xử lý được câu hỏi này. Bạn thử hỏi lại ngắn hơn nhé.";
+                    chatHistory.push({ type: "bot", text: typing.textContent });
+                    saveHistory();
+                    return;
+                }
+
+                const data = await response.json();
+                typing.textContent = data.reply || "Mình chưa có câu trả lời phù hợp.";
+                chatHistory.push({ type: "bot", text: typing.textContent });
+                saveHistory();
+                appendResults(data);
+            } catch {
+                typing.textContent = "Không kết nối được trợ lý lúc này. Bạn thử lại sau nhé.";
+                chatHistory.push({ type: "bot", text: typing.textContent });
+                saveHistory();
+            }
+        };
+
+        launcher.addEventListener("click", () => {
+            root.classList.add("is-open");
+            input.focus();
+        });
+
+        closeButton?.addEventListener("click", () => {
+            root.classList.remove("is-open");
+        });
+
+        form.addEventListener("submit", event => {
+            event.preventDefault();
+            sendMessage(input.value);
+        });
+
+        document.querySelectorAll("[data-ai-suggestion]").forEach(button => {
+            button.addEventListener("click", () => {
+                root.classList.add("is-open");
+                sendMessage(button.dataset.aiSuggestion || "");
+            });
+        });
+
+        loadHistory();
+    })();
+</script>

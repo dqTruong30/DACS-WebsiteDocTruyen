@@ -1,0 +1,138 @@
+﻿@model IEnumerable<HutechNovel.Models.TacGia>
+
+@{
+    ViewData["Title"] = "Quản Lý Tác Giả";
+}
+
+<section class="panel mb-4" style="border-left: 4px solid var(--admin-green);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            
+            <div>
+                <div class="section-kicker">Cơ sở dữ liệu</div>
+                <h1 class="page-title text-uppercase" style="margin:0;">Quản Lý Tác Giả</h1>
+            </div>
+        </div>
+        <a class="btn-neon" asp-action="Create">
+            <i class="fas fa-plus"></i> Thêm tác giả mới
+        </a>
+    </div>
+
+    <div class="admin-toolbar mt-4">
+        <input class="inline-input w-100" type="text" id="liveSearchTacGia" placeholder="Nhập tên tác giả để lọc ngay lập tức..." />
+    </div>
+</section>
+
+<section class="table-card">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Tên Tác Giả</th>
+                <th style="width: 15%; text-align: center;">Tác phẩm</th>
+                <th style="width: 35%;">Tiểu Sử</th>
+                <th style="width: 25%; text-align: center;">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="searchable-author">
+                    <td class="author-name">
+                        <strong style="color: var(--public-text); font-size: 1.1rem;">@item.TenTacGia</strong>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="role-chip" style="border-color: var(--admin-blue); color: var(--admin-blue);">
+                            @item.Truyens.Count truyện
+                        </span>
+                    </td>
+                    <td>
+                        <div style="max-height: 45px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--public-muted);">
+                            @(string.IsNullOrEmpty(item.TieuSu) ? "Chưa có thông tin tiểu sử..." : item.TieuSu)
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a class="btn-action btn-view" asp-area="" asp-controller="TacGia" asp-action="ChiTiet" asp-route-id="@item.MaTacGia" target="_blank" title="Xem danh sách truyện">
+                                Xem
+                            </a>
+
+                            <a class="btn-action btn-edit" asp-action="Edit" asp-route-id="@item.MaTacGia">Sửa</a>
+                            
+                            <button type="button" class="btn-action btn-delete btn-cyber-danger"
+                                    data-bs-toggle="modal" data-bs-target="#deleteAuthorModal"
+                                    data-id="@item.MaTacGia" data-title="@item.TenTacGia">
+                                XÓA
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<div class="modal fade" id="deleteAuthorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--public-surface); border: 1px solid var(--public-border); border-radius: var(--radius-lg); color: var(--public-text);">
+            <div class="modal-body text-center py-5 px-4">
+                <div style="font-size: 4rem; line-height: 1; color: var(--public-red); margin-bottom: 1.5rem;">
+                    ⚠️
+                </div>
+                <h4 style="font-weight: 800; margin-bottom: 0.5rem; color: var(--public-red);">XÓA TÁC GIẢ?</h4>
+                <strong id="deleteAuthorName" style="font-size: 1.3rem; display: block; margin-bottom: 1rem;"></strong>
+                <p class="muted mb-4" style="font-size: 0.95rem;">
+                    Bạn có chắc chắn muốn xóa tác giả này khỏi hệ thống không?
+                    <br />Hành động này không thể hoàn tác.
+                </p>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal" style="min-width: 120px;">Hủy bỏ</button>
+                    <form asp-action="Delete" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" id="deleteAuthorId" value="" />
+                        <button type="submit" class="btn-cyber-danger" style="padding: 0.65rem 1rem; border-radius: 10px; font-weight: 700; min-width: 120px;">
+                            XÁC NHẬN XÓA
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. Script cho Modal Xóa
+            var deleteModal = document.getElementById('deleteAuthorModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var id = button.getAttribute('data-id');
+                    var name = button.getAttribute('data-title');
+                    
+                    deleteModal.querySelector('#deleteAuthorName').textContent = '"' + name + '"';
+                    deleteModal.querySelector('#deleteAuthorId').value = id;
+                });
+            }
+
+            // 2. Script Tìm kiếm thời gian thực
+            var searchInput = document.getElementById('liveSearchTacGia');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    let keyword = e.target.value.toLowerCase().trim();
+                    let rows = document.querySelectorAll('.searchable-author');
+
+                    rows.forEach(row => {
+                        let name = row.querySelector('.author-name').innerText.toLowerCase();
+                        if (name.includes(keyword)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+}

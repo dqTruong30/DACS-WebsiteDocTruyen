@@ -1,0 +1,13 @@
+@model string
+
+@if (!string.IsNullOrEmpty(Model))
+{
+    var statusClass = Model.Contains("error", StringComparison.OrdinalIgnoreCase)
+        || Model.Contains("không", StringComparison.OrdinalIgnoreCase)
+        ? "is-danger"
+        : "is-success";
+
+    <div class="status-banner @statusClass" role="alert">
+        @Model
+    </div>
+}

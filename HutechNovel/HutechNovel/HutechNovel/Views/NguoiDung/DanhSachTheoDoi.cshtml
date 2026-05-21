@@ -1,0 +1,89 @@
+@model HutechNovel.Models.UserLibraryViewModel
+
+@{
+    ViewData["Title"] = "Danh sách theo dõi";
+    var newChapterCount = Model.FollowingStories.Count(item => item.HasNewChapter);
+}
+
+<section class="panel mb-4">
+    <div class="section-kicker">Tủ truyện cá nhân</div>
+    <h1 class="page-title">Danh sách theo dõi</h1>
+    <div class="page-tabs">
+        <span class="status-chip">Theo dõi @Model.FollowingStories.Count</span>
+        <span class="status-chip">Có chương mới @newChapterCount</span>
+    </div>
+</section>
+
+@if (newChapterCount > 0)
+{
+    <section class="follow-alert mb-4">
+        <div>
+            <strong>@newChapterCount truyện bạn theo dõi vừa có chương mới.</strong>
+            <span>Những truyện có cập nhật mới đã được đưa lên đầu danh sách.</span>
+        </div>
+    </section>
+}
+
+@if (Model.FollowingStories.Any())
+{
+    <section class="follow-grid">
+        @foreach (var item in Model.FollowingStories)
+        {
+            <article class="panel follow-card @(item.HasNewChapter ? "has-new-chapter" : "")">
+                <img class="follow-card__cover"
+                     src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                     alt="@item.Story.TieuDe"
+                     onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+
+                <div class="follow-card__body">
+                    <div class="follow-card__topline">
+                        @if (item.HasNewChapter)
+                        {
+                            <span class="new-chapter-badge"><i class="fas fa-bell me-1"></i>Có chương mới</span>
+                        }
+                        <span class="muted">Theo dõi từ @item.LastActivity.ToString("dd/MM/yyyy")</span>
+                    </div>
+
+                    <h2 class="follow-card__title">
+                        <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">@item.Story.TieuDe</a>
+                    </h2>
+
+                    @if (item.CurrentChapter != null)
+                    {
+                        <div class="follow-card__chapter">
+                            <span>Chương mới nhất</span>
+                            <a asp-controller="DocTruyen" asp-action="Index"
+                               asp-route-maTruyen="@item.Story.MaTruyen"
+                               asp-route-soChuong="@item.CurrentChapter.SoChuong">
+                                Chương @item.CurrentChapter.SoChuong: @item.CurrentChapter.TieuDe
+                            </a>
+                            <small>@item.CurrentChapter.NgayTao.ToString("dd/MM/yyyy HH:mm")</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-box py-3">Truyện chưa có chương được xuất bản.</div>
+                    }
+
+                    <div class="follow-card__actions">
+                        <a class="btn-neon" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                        @if (item.CurrentChapter != null)
+                        {
+                            <a class="btn-ghost" asp-controller="DocTruyen" asp-action="Index"
+                               asp-route-maTruyen="@item.Story.MaTruyen"
+                               asp-route-soChuong="@item.CurrentChapter.SoChuong">
+                                Đọc chương mới
+                            </a>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="empty-box">Bạn chưa theo dõi truyện nào.</div>
+    </section>
+}

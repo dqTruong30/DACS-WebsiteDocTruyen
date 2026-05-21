@@ -1,0 +1,50 @@
+﻿@model HutechNovel.Models.Chuong
+@using HutechNovel.Models
+
+@{
+    ViewData["Title"] = "Chi Tiết Chương";
+    var listNoiDung = Model.NoiDungChuongs?.ToList() ?? new List<NoiDungChuong>();
+    var noiDungRaw = listNoiDung.FirstOrDefault(n => n.LoaiNoiDung == LoaiNoiDungChuong.BanGoc)?.NoiDung;
+    var noiDungText = listNoiDung.FirstOrDefault(n => n.LoaiNoiDung == LoaiNoiDungChuong.BanDich)?.NoiDung;
+}
+<section class="panel mb-4">
+    <div class="admin-actions justify-content-between align-items-center">
+        <div>
+            <div class="section-kicker">Chi tiết nội dung</div>
+            <h1 class="page-title" style="margin: 0;">Chương @Model.SoChuong: @Model.TieuDe</h1>
+        </div>
+        <a class="btn-ghost" asp-action="DanhSach" asp-route-maTruyen="@Model.MaTruyen" style="display: inline-flex; align-items: center;">
+            <i class="fas fa-arrow-left me-2"></i> Quay lại danh sách
+        </a>
+    </div>
+</section>  
+<section class="two-column">
+    <div class="panel">
+        <h3 class="section-title mb-3">Nội dung Raw</h3>
+        <div class="reader-content" style="max-height: 650px; overflow-y: auto; padding-right: 10px; font-size: 1.1rem;">
+            @if (!string.IsNullOrEmpty(noiDungRaw))
+            {
+                @* Dùng Html.Raw và thay \n thành <br/> để giữ định dạng xuống dòng *@
+                @Html.Raw(noiDungRaw.Replace("\n", "<br/>"))
+            }
+            else
+            {
+                <span class="muted" style="font-style: italic;">Dữ liệu Raw không tồn tại trong Database cho chương này.</span>
+            }
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3 class="section-title mb-3">Nội dung Convert</h3>
+        <div class="reader-content" style="max-height: 650px; overflow-y: auto; padding-right: 10px; font-size: 1.1rem;">
+            @if (!string.IsNullOrEmpty(noiDungText))
+            {
+                @Html.Raw(noiDungText.Replace("\n", "<br/>"))
+            }
+            else
+            {
+                <span class="muted" style="font-style: italic;">Dữ liệu Convert chưa được cập nhật.</span>
+            }
+        </div>
+    </div>
+</section>

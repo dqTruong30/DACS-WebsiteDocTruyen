@@ -1,0 +1,98 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Quản lý tài khoản";
+    ViewData["ActivePage"] = ManageNavPages.Index;
+}
+
+<div class="manage-main__header">
+    <div>
+        <div class="section-kicker">Tài khoản của bạn</div>
+        <h1 class="page-title">@ViewData["Title"]</h1>
+    </div>
+    <a class="btn-ghost" asp-area="" asp-controller="NguoiDung" asp-action="HoSo">Xem hồ sơ công khai</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="status-banner @(Model.StatusMessage.Contains("không", StringComparison.OrdinalIgnoreCase) ? "is-danger" : "is-success")">
+        @Model.StatusMessage
+    </div>
+}
+
+<div class="manage-card-grid">
+    <section class="manage-card">
+        <div class="manage-hero">
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentAvatar))
+            {
+                <img src="@Model.CurrentAvatar" alt="Avatar" class="manage-avatar" />
+            }
+            else
+            {
+                <div class="manage-avatar manage-avatar--fallback">@((Model.Username ?? "U").Substring(0, 1).ToUpper())</div>
+            }
+            <div>
+                <h2 class="section-title mb-1">@Model.Username</h2>
+                <div class="manage-helper">Bạn có thể cập nhật họ tên, số điện thoại và avatar ngay tại đây.</div>
+            </div>
+        </div>
+
+        <div class="manage-stats">
+            <div class="manage-stat">
+                <span class="manage-helper">Theo dõi</span>
+                <strong>@Model.FollowingCount</strong>
+            </div>
+            <div class="manage-stat">
+                <span class="manage-helper">Lịch sử đọc</span>
+                <strong>@Model.HistoryCount</strong>
+            </div>
+            <div class="manage-stat">
+                <span class="manage-helper">Bình luận</span>
+                <strong>@Model.CommentCount</strong>
+            </div>
+        </div>
+
+        <form id="profile-form" method="post" enctype="multipart/form-data" class="manage-form">
+            <div asp-validation-summary="ModelOnly" class="status-banner is-danger"></div>
+
+            <div>
+                <label class="auth-label">Tên đăng nhập</label>
+                <input asp-for="Username" class="field" disabled />
+            </div>
+
+            <div>
+                <label asp-for="Input.FullName" class="auth-label">Họ và tên</label>
+                <input asp-for="Input.FullName" class="field" placeholder="Nhập họ tên hiển thị" />
+                <span asp-validation-for="Input.FullName" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label asp-for="Input.PhoneNumber" class="auth-label">Số điện thoại</label>
+                <input asp-for="Input.PhoneNumber" class="field" placeholder="Nhập số điện thoại của bạn" />
+                <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label class="auth-label">Cập nhật avatar</label>
+                <input asp-for="AvatarUpload" type="file" class="field" accept=".png,.jpg,.jpeg,.webp" />
+                <div class="manage-helper mt-2">Hỗ trợ JPG, PNG, WEBP. Nên dùng ảnh vuông để hiển thị đẹp hơn.</div>
+            </div>
+
+            <button id="update-profile-button" type="submit" class="btn-neon">Lưu thay đổi</button>
+        </form>
+    </section>
+
+    <aside class="manage-card">
+        <h2 class="section-title mb-3">Truy cập nhanh</h2>
+        <div class="manage-inline-list">
+            <a class="btn-ghost" asp-area="" asp-controller="NguoiDung" asp-action="DanhSachTheoDoi">Danh sách theo dõi</a>
+            <a class="btn-ghost" asp-area="" asp-controller="NguoiDung" asp-action="TuTruyen" asp-fragment="history-panel">Lịch sử đọc truyện</a>
+            <a class="btn-ghost" asp-page="./Email">Quản lý Email</a>
+            <a class="btn-ghost" asp-page="./ChangePassword">Đổi mật khẩu</a>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,255 @@
+@model HutechNovel.Models.UploaderDashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard Uploader";
+    int startPage = Math.Max(1, Model.CurrentPage - 2);
+    int endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+
+    string StatusText(TrangThaiTruyen status) => status switch
+    {
+        TrangThaiTruyen.DaHoanThanh => "Đã hoàn thành",
+        TrangThaiTruyen.TamNgung => "Tạm ngưng",
+        _ => "Đang tiến hành"
+    };
+}
+
+<section class="panel mb-4">
+    <div class="admin-actions justify-content-between align-items-center">
+        <div>
+            <div class="section-kicker">Uploader dashboard</div>
+            <h1 class="page-title" style="margin: 0;">Thống kê truyện của bạn</h1>
+        </div>
+        <a class="btn-admin" asp-action="ThemMoi" style="display: inline-flex; align-items: center; gap: 8px;">
+            <i class="fas fa-plus"></i> Thêm truyện mới
+        </a>
+    </div>
+</section>
+
+<section class="stats-grid-4 mb-4">
+    <div class="stats-card">
+        <div class="muted">Tổng truyện</div>
+        <strong>@Model.TotalStories</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Tổng chương</div>
+        <strong>@Model.TotalChapters</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Lượt xem</div>
+        <strong>@Model.TotalViews</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Theo dõi / Đẩy sách</div>
+        <strong>@Model.TotalFollowers / @Model.TotalBoosts</strong>
+    </div>
+</section>
+
+<section class="stats-grid-4 mb-4">
+    <div class="stats-card">
+        <div class="muted">Lượt đọc hôm nay</div>
+        <strong>@Model.TodayViews</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Chương nháp</div>
+        <strong>@Model.DraftChapters</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Chương hẹn giờ</div>
+        <strong>@Model.ScheduledChapters</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Truyện đang quản lý</div>
+        <strong>@Model.RecentStories.Count</strong>
+    </div>
+</section>
+
+<section class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="table-card h-100 p-3">
+            <div class="section-kicker">Thống kê từng truyện</div>
+            <h2 class="section-title mb-3" style="font-size: 1.35rem;">Truyện được đọc nhiều</h2>
+            @if (Model.TopStories.Any())
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var item in Model.TopStories)
+                    {
+                        <div class="d-flex justify-content-between gap-3" style="border-bottom: 1px dashed var(--admin-border); padding-bottom: 0.75rem;">
+                            <strong>@item.Story.TieuDe</strong>
+                            <span class="muted">@item.TodayViews hôm nay / @item.TotalViews tổng</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="muted">Chưa có dữ liệu lượt đọc.</div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="table-card h-100 p-3">
+            <div class="section-kicker">Hiệu suất chương</div>
+            <h2 class="section-title mb-3" style="font-size: 1.35rem;">Chương được đọc nhiều nhất</h2>
+            @if (Model.TopChapters.Any())
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var item in Model.TopChapters)
+                    {
+                        <div class="d-flex justify-content-between gap-3" style="border-bottom: 1px dashed var(--admin-border); padding-bottom: 0.75rem;">
+                            <div>
+                                <strong>@item.Chapter.Truyen.TieuDe</strong>
+                                <div class="muted small">Chương @item.Chapter.SoChuong: @item.Chapter.TieuDe</div>
+                            </div>
+                            <span class="muted">@item.ReadCount lượt đọc</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="muted">Chưa có lịch sử đọc chương.</div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="table-card">
+    <!-- THANH TÌM KIẾM -->
+    <div class="p-3" style="border-bottom: 1px solid var(--admin-border); background: var(--public-surface-2);">
+        <form method="get" asp-action="Index" class="d-flex gap-2">
+            <input type="text" name="keyword" value="@Model.SearchKeyword" class="field" style="max-width: 400px; padding: 0.5rem 1rem;" placeholder="Nhập tên truyện cần tìm..." autocomplete="off" />
+            <button type="submit" class="btn-admin-alt" style="padding: 0.5rem 1.2rem;"><i class="fas fa-search me-2"></i>Tìm kiếm</button>
+            @if (!string.IsNullOrEmpty(Model.SearchKeyword))
+            {
+                <a asp-action="Index" class="btn-ghost" style="padding: 0.5rem 1.2rem;"><i class="fas fa-times me-2"></i>Xóa lọc</a>
+            }
+        </form>
+    </div>
+
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Truyện</th>
+                <th>Trạng thái</th>
+                <th>Số liệu</th>
+                <th>Cập nhật</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var story in Model.RecentStories)
+            {
+                <tr>
+                    <td><strong>@story.TieuDe</strong></td>
+                    <td><span class="status-chip">@StatusText(story.TrangThai)</span></td>
+                    <td>@story.TongSoChuong chương, @story.TongLuotXem lượt xem</td>
+                    <td>@story.NgayCapNhat.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a class="btn-admin-alt" asp-action="Sua" asp-route-id="@story.MaTruyen">Sửa</a>
+                            <a class="btn-admin" asp-controller="QuanLyChuong" asp-action="DanhSach" asp-route-maTruyen="@story.MaTruyen">Chương</a>
+                            
+                            <button type="button" class="btn-admin"
+                                    style="background: var(--admin-red); border-color: var(--admin-red); box-shadow: 0 8px 24px rgba(255, 85, 85, 0.18);"
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                    data-id="@story.MaTruyen" data-title="@story.TieuDe">
+                                Xóa
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (!Model.RecentStories.Any())
+            {
+                <tr>
+                    <td colspan="5" class="text-center p-4 muted">Không tìm thấy truyện nào.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- PHÂN TRANG -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="p-3 d-flex justify-content-center" style="border-top: 1px solid var(--admin-border);">
+            <div class="d-flex gap-2">
+                @if (Model.CurrentPage > 1)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-keyword="@Model.SearchKeyword" class="btn-ghost" style="padding: 0.4rem 0.8rem;">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                }
+
+                @for (int i = startPage; i <= endPage; i++)
+                {
+                    <a asp-action="Index" asp-route-page="@i" asp-route-keyword="@Model.SearchKeyword"
+                       class="@(i == Model.CurrentPage ? "btn-admin-alt" : "btn-ghost")"
+                       style="padding: 0.4rem 1rem;">@i</a>
+                }
+
+                @if (Model.CurrentPage < Model.TotalPages)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-keyword="@Model.SearchKeyword" class="btn-ghost" style="padding: 0.4rem 0.8rem;">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+<!-- MODAL XÓA (Giữ nguyên của bạn) -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--radius-lg); color: var(--admin-text);">
+            
+            <div class="modal-body text-center py-5 px-4">
+                <div style="font-size: 4rem; line-height: 1; color: var(--admin-red); margin-bottom: 1.5rem; text-shadow: 0 0 15px rgba(255, 85, 85, 0.4);">
+                    ⚠️
+                </div>
+                <h4 style="font-weight: 800; margin-bottom: 0.5rem;">Xóa truyện này?</h4>
+                <strong id="deleteStoryTitle" style="font-size: 1.3rem; color: #fff; display: block; margin-bottom: 1rem;"></strong>
+                <p class="muted mb-4" style="font-size: 0.95rem;">
+                    Toàn bộ chương, bình luận và dữ liệu liên quan sẽ bị xóa sạch khỏi cơ sở dữ liệu.
+                    <br />Hành động này <b>không thể hoàn tác!</b>
+                </p>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal" style="min-width: 120px;">Hủy bỏ</button>
+                    
+                    <form asp-action="Xoa" method="post" id="deleteForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" id="deleteStoryId" value="" />
+                        <button type="submit" class="btn-admin" style="background: var(--admin-red); border-color: var(--admin-red); box-shadow: 0 8px 24px rgba(255, 85, 85, 0.25); min-width: 120px;">
+                            Xác nhận Xóa
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var deleteModal = document.getElementById('deleteModal');
+            
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var storyId = button.getAttribute('data-id');
+                    var storyTitle = button.getAttribute('data-title');
+                    
+                    var modalTitle = deleteModal.querySelector('#deleteStoryTitle');
+                    var hiddenInput = deleteModal.querySelector('#deleteStoryId');
+                    
+                    modalTitle.textContent = '"' + storyTitle + '"';
+                    hiddenInput.value = storyId;
+                });
+            }
+
+        });
+    </script>
+}

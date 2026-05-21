@@ -1,0 +1,117 @@
+@model HutechNovel.Models.Truyen
+@using HutechNovel.Models
+
+@{
+    ViewData["Title"] = "Cập Nhật Truyện";
+    var danhSachThe = ViewBag.DanhSachThe as List<The> ?? new List<The>();
+    var selectedTags = ViewBag.SelectedTags as List<int> ?? new List<int>();
+}
+
+
+<section class="panel">
+    <div class="section-kicker">Quản lý truyện</div>
+    <h1 class="page-title">Cập nhật truyện</h1>
+
+    <form asp-area="Admin" asp-controller="QuanLyTruyen" asp-action="Sua"
+          method="post" enctype="multipart/form-data" class="search-filters mt-4">
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="ModelOnly" class="status-banner is-danger"
+             style="flex: 1 1 100%;"></div>
+
+        <input asp-for="MaTruyen" type="hidden" />
+        <input asp-for="AnhBia" type="hidden" />
+
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Tên truyện <span class="text-danger">*</span></label>
+            <input asp-for="TieuDe" class="field" required />
+            <span asp-validation-for="TieuDe" class="text-danger small"></span>
+        </div>
+
+        <div style="flex: 1 1 48%; margin-bottom: 15px; position: relative;">
+            <label class="fw-bold mb-2">Tác giả <span class="text-danger">*</span></label>
+            <input type="hidden" asp-for="MaTacGia" id="hiddenMaTacGia" />
+            <input type="text"
+                   name="tenTacGiaMoi"
+                   id="inputTenTacGia"
+                   class="field"
+                   placeholder="Gõ tìm hoặc nhập tên tác giả mới..."
+                   autocomplete="off"
+                   required
+                   value="@ViewBag.TenTacGiaCu" />
+            <ul id="dropdownTacGia" class="tacgia-dropdown" style="display:none;"></ul>
+        </div>
+
+        <div style="flex: 1 1 48%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Trạng thái</label>
+            <select asp-for="TrangThai"
+                    asp-items="Html.GetEnumSelectList<TrangThaiTruyen>()"
+                    class="field-select" style="width:100%;"></select>
+        </div>
+
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Thể loại (Tags)</label>
+            <div style="position: relative;">
+                <input type="text" id="inputTimThe" class="field"
+                       placeholder="Gõ để tìm hoặc thêm thẻ mới..." autocomplete="off" />
+                <ul id="dropdownThe" class="tacgia-dropdown" style="display:none;"></ul>
+            </div>
+            @* FIX: Bỏ style="display:none" — JS đọc data-id/data-text rồi tự renderChips() *@
+            <div id="selectedTagsContainer" class="mt-2" style="display:flex; flex-wrap:wrap; gap:6px;">
+                @if (danhSachThe != null && selectedTags != null)
+                {
+                    @foreach (var tag in danhSachThe.Where(t => selectedTags.Contains(t.MaThe)))
+                    {
+                        <span class="tag-chip tag-chip-item"
+                              data-id="@tag.MaThe"
+                              data-text="@tag.TenThe">
+                        </span>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="upload-group" style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Ảnh bìa truyện</label>
+            
+            <div class="d-flex gap-4 align-items-start flex-wrap">
+                
+                @if (!string.IsNullOrEmpty(Model.AnhBia))
+                {
+                    <div style="flex: 0 0 auto;">
+                        <small class="d-block muted mb-2">Ảnh hiện tại:</small>
+                        <img src="@Model.AnhBia" alt="Cover" class="current-cover" style="max-width: 180px; height: auto; border-radius: 8px; object-fit: cover;" />
+                    </div>
+                }
+                
+                <div style="flex: 1 1 30%; min-width: 250px;">
+                    <div class="mb-3">
+                        <small class="muted d-block mb-1">Đổi ảnh từ máy (nếu muốn)</small>
+                        <input type="file" name="fileAnhBia" id="fileAnhBia"
+                               class="field" accept="image/*" />
+                    </div>
+                    <div>
+                        <small class="muted d-block mb-1">Hoặc dán Link ảnh mới</small>
+                        <input type="text" name="linkAnhBia" id="linkAnhBia"
+                               class="field" placeholder="Giữ trống nếu không đổi..." />
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        <div style="flex: 1 1 100%; margin-bottom: 15px;">
+            <label class="fw-bold mb-2">Tóm tắt / Giới thiệu nội dung</label>
+            <textarea asp-for="MoTa" class="field-textarea" style="min-height:220px;" placeholder="Nhập tóm tắt nội dung truyện..."></textarea>
+        </div>
+
+        <div class="d-flex gap-3 mt-4" style="flex: 1 1 100%;">
+            <button class="btn-neon" type="submit" style="min-width:150px;">Cập nhật truyện</button>
+            <a class="btn-ghost" asp-action="Index">Quay lại</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/admin-novel.js" asp-append-version="true"></script>
+}

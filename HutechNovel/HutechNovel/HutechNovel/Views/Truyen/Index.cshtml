@@ -1,0 +1,48 @@
+@model IEnumerable<HutechNovel.Models.Truyen>
+
+@{
+    ViewData["Title"] = "Kho truyen";
+}
+
+<section class="panel mb-4">
+    <div class="eyebrow">Danh sach truyen</div>
+    <h1 class="section-title">Kho truyen dang san sang gan du lieu that</h1>
+    <p class="muted">Danh sach nay dang lay tu bang `Truyens`, co tac gia, tags va thong tin cap nhat moi nhat.</p>
+</section>
+
+@if (Model.Any())
+{
+    <section class="story-grid">
+        @foreach (var item in Model)
+        {
+            <article class="story-card">
+                <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.MaTruyen">
+                    <img class="story-cover" src="@(string.IsNullOrWhiteSpace(item.AnhBia) ? "/images/no-cover.jpg" : item.AnhBia)" alt="@item.TieuDe" />
+                </a>
+                <div class="story-card__body">
+                    <div class="story-card__meta">
+                        <span class="meta-chip">@item.TrangThai</span>
+                        <span class="meta-chip">@item.TongLuotXem luot xem</span>
+                    </div>
+                    <h2 class="story-title">
+                        <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.MaTruyen">@item.TieuDe</a>
+                    </h2>
+                    <p class="muted">Tac gia: @(item.TacGia?.TenTacGia ?? "Dang cap nhat")</p>
+                    <div class="tab-strip mb-3">
+                        @* ĐÃ SỬA: Gọi trực tiếp Thes và tag.TenThe *@
+                        @foreach (var tag in item.Thes.Take(3))
+                        {
+                            <span class="meta-chip">@tag.TenThe</span>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </section>
+}
+else
+{
+    <section class="panel empty-state">
+        Khong co truyen nao phu hop voi bo loc hien tai.
+    </section>
+}

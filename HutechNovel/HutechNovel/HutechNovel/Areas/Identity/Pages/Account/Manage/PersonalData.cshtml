@@ -1,0 +1,43 @@
+﻿@page
+@model PersonalDataModel
+@{
+    ViewData["Title"] = "Dữ liệu cá nhân";
+    ViewData["ActivePage"] = ManageNavPages.PersonalData;
+}
+
+<div class="manage-main__header">
+    <div>
+        <div class="section-kicker">Quyền riêng tư</div>
+        <h1 class="page-title">@ViewData["Title"]</h1>
+    </div>
+</div>
+
+<section class="manage-card">
+    <div class="status-banner is-success mb-4">
+        <div style="font-weight: 700; margin-bottom: 0.3rem;">Tài khoản của bạn chứa các dữ liệu cá nhân mà bạn đã cung cấp.</div>
+        <div style="font-size: 0.95rem; font-weight: 500;">Trang này cho phép bạn tải xuống một bản sao dữ liệu của mình hoặc tiến hành xóa vĩnh viễn tài khoản.</div>
+    </div>
+
+    <div class="status-banner is-danger mb-4">
+        <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 0.3rem;">
+            <i class="fas fa-exclamation-triangle me-2"></i> KHU VỰC NGUY HIỂM
+        </div>
+        <div style="font-size: 0.95rem; font-weight: 500;">Hành động xóa dữ liệu sẽ <strong>tiêu hủy vĩnh viễn tài khoản của bạn</strong> và toàn bộ lịch sử đọc, đánh giá. Dữ liệu không thể khôi phục lại được!</div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-3 mt-4 pt-4" style="border-top: 1px solid var(--public-border);">
+        <form id="download-data" asp-page="DownloadPersonalData" method="post" class="m-0">
+            <button class="btn-neon" type="submit" style="display: inline-flex; align-items: center; justify-content: center; min-width: 220px;">
+                <i class="fas fa-file-download me-2"></i> Tải Xuống Dữ Liệu
+            </button>
+        </form>
+
+        <a id="delete" asp-page="DeletePersonalData" class="btn-ghost" style="display: inline-flex; align-items: center; justify-content: center; min-width: 220px; color: var(--public-red); border-color: var(--public-red); background: rgba(255, 61, 110, 0.05);">
+            <i class="fas fa-trash-alt me-2"></i> Xóa Tài Khoản
+        </a>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

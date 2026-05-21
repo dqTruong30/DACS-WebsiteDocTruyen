@@ -1,0 +1,90 @@
+﻿@model HutechNovel.Models.TacGia
+
+@{
+    ViewData["Title"] = "Tác giả: " + Model.TenTacGia;
+    var soTacPham = Model.Truyens?.Count ?? 0;
+}
+
+<style>
+    .author-story-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 220px));
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .author-story-grid .story-card {
+        max-width: 220px;
+    }
+
+    .author-story-grid .story-cover {
+        aspect-ratio: 3 / 4;
+        object-fit: cover;
+    }
+</style>
+
+<section class="panel mb-4 shadow-sm">
+    <div class="d-flex align-items-center gap-3 mb-3">
+        @* Tối ưu Avatar fallback *@
+        <div class="manage-avatar--fallback shadow-sm"
+             style="width: 80px; height: 80px; border-radius: 50%; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; background: var(--public-surface-2); color: var(--public-green); border: 2px solid var(--public-green);">
+            @(!string.IsNullOrEmpty(Model.TenTacGia) ? Model.TenTacGia.Trim().Substring(0, 1).ToUpper() : "?")
+        </div>
+        <div>
+            <h1 class="page-title" style="margin-bottom: 0.2rem; color: var(--public-green); font-weight: 700;">@Model.TenTacGia</h1>
+            <div class="muted" style="font-weight: 600;">✨ Tác giả • @soTacPham tác phẩm</div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.TieuSu))
+    {
+        <div class="mt-3 p-3" style="background: var(--public-surface-2); border-radius: var(--radius-md); border: 1px solid var(--public-border);">
+            <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 0.5rem; color: var(--public-text);"><i class="fas fa-book-reader me-2"></i>Giới thiệu tiểu sử</h3>
+            <p style="margin: 0; line-height: 1.6; color: var(--public-muted); white-space: pre-wrap;">@Model.TieuSu</p>
+        </div>
+    }
+</section>
+
+<section>
+    <div class="d-flex justify-content-between align-items-end mb-3">
+        <h2 class="section-title">📚 Danh sách tác phẩm (@soTacPham)</h2>
+    </div>
+
+    @if (Model.Truyens != null && Model.Truyens.Any())
+    {
+        <div class="author-story-grid">
+            @foreach (var truyen in Model.Truyens.OrderByDescending(t => t.NgayCapNhat))
+            {
+                <div class="story-card h-100 shadow-sm">
+                    <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen" class="d-block overflow-hidden">
+                        <img src="@(string.IsNullOrEmpty(truyen.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : truyen.AnhBia)"
+                             alt="@truyen.TieuDe"
+                             class="story-cover w-100"
+                             style="transition: transform 0.3s ease;"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                    </a>
+                    <div class="story-body p-3">
+                        <h3 class="story-title" style="font-size: 1rem; height: 2.4rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen" class="text-decoration-none text-body fw-bold">@truyen.TieuDe</a>
+                        </h3>
+                        <div class="story-meta d-flex justify-content-between align-items-center mt-3">
+                            <span class="badge @(truyen.TrangThai == HutechNovel.Models.TrangThaiTruyen.DaHoanThanh ? "bg-success" : "bg-primary")" style="font-size: 0.7rem;">
+                                @(truyen.TrangThai == HutechNovel.Models.TrangThaiTruyen.DangTienHanh ? "Đang ra" :
+                                                        truyen.TrangThai == HutechNovel.Models.TrangThaiTruyen.DaHoanThanh ? "Hoàn thành" : "Tạm ngưng")
+                    </span>
+                    <span class="muted small" title="Lượt xem">
+                        <i class="far fa-eye me-1"></i>@truyen.TongLuotXem.ToString("N0")
+                    </span>
+                </div>
+            </div>
+        </div>
+                }
+        </div>
+    }
+    else
+    {
+        <div class="empty-box mt-3 p-5 text-center border rounded-3 bg-light">
+            <div class="muted"><i class="fas fa-folder-open mb-2 fa-2x"></i><br>Tác giả này hiện chưa có tác phẩm nào.</div>
+        </div>
+    }
+</section>

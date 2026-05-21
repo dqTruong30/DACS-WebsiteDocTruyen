@@ -1,0 +1,41 @@
+@page
+@model DeletePersonalDataModel
+@{
+    ViewData["Title"] = "Xoa tai khoan";
+    ViewData["ActivePage"] = ManageNavPages.DeletePersonalData;
+}
+
+<div class="manage-main__header">
+    <div>
+        <div class="section-kicker">Khu vuc nguy hiem</div>
+        <h1 class="page-title">Xoa tai khoan</h1>
+    </div>
+</div>
+
+<section class="manage-card">
+    <div class="status-banner is-danger mb-4">
+        <div style="font-weight: 800; margin-bottom: 0.35rem;">Hanh dong nay se xoa vinh vien tai khoan cua ban.</div>
+        <div>Du lieu ca nhan, lich su doc, tuong tac va binh luan cua ban se duoc go bo. Thao tac nay khong the khoi phuc.</div>
+    </div>
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+        @if (Model.RequirePassword)
+        {
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="fw-bold mb-2 small muted">Mat khau</label>
+                <input asp-for="Input.Password" class="field" autocomplete="current-password" placeholder="Nhap mat khau..." />
+                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+            </div>
+        }
+
+        <button class="btn-ghost w-100" type="submit" style="color: var(--public-red) !important; border-color: var(--public-red); background: rgba(255, 61, 110, 0.08);">
+            Xoa du lieu va dong tai khoan cua toi
+        </button>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

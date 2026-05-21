@@ -1,0 +1,49 @@
+@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Đăng Ký";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<section class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-tabs">
+            <a asp-page="./Login" class="auth-tab">Đăng Nhập</a>
+            <span class="auth-tab is-active">Đăng Ký</span>
+        </div>
+
+        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div>
+                <label asp-for="Input.UserName" class="auth-label">Tên đăng nhập</label>
+                <input asp-for="Input.UserName" class="field" placeholder="Viết liền không dấu" />
+                <span asp-validation-for="Input.UserName" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label asp-for="Input.Email" class="auth-label">Địa chỉ Email</label>
+                <input asp-for="Input.Email" class="field" placeholder="abc@gmail.com" />
+                <span asp-validation-for="Input.Email" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label asp-for="Input.Password" class="auth-label">Mật khẩu</label>
+                <input asp-for="Input.Password" class="field" placeholder="Mật khẩu từ 6 kí tự" />
+                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+            </div>
+
+            <div>
+                <label asp-for="Input.ConfirmPassword" class="auth-label">Xác nhận mật khẩu</label>
+                <input asp-for="Input.ConfirmPassword" class="field" placeholder="Nhập lại mật khẩu" />
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+            </div>
+
+            <button id="registerSubmit" type="submit" class="btn-neon w-100">Đăng Ký Tài Khoản</button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,81 @@
+@model IEnumerable<HutechNovel.Models.The>
+
+@{
+    ViewData["Title"] = "Quản Trị Danh Mục & Tags";
+}
+
+<section class="panel mb-4" style="border-left: 4px solid var(--admin-green);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            
+            <div>
+                <div class="section-kicker">Cơ sở dữ liệu</div>
+                <h1 class="page-title text-uppercase" style="margin:0;">Quản lý Thể loại</h1>
+            </div>
+        </div>
+        
+        <form asp-area="Admin" asp-controller="QuanTriThe" asp-action="Them" method="post" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <input class="field" type="text" name="tenThe" placeholder="Nhập tên Thể loại mới..." required autocomplete="off" style="min-width: 250px;" />
+            <button class="btn-neon" type="submit">Thêm ngay</button>
+        </form>
+    </div>
+
+    <div class="mt-4 pt-3" style="border-top: 1px solid var(--public-border);">
+        <input class="inline-input w-100" type="text" id="liveSearchTag" placeholder="Gõ tên tag để tìm kiếm nhanh..." autocomplete="off" />
+    </div>
+</section>
+
+<section class="table-card">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th style="width: 70%;">Tên Thể Loại / Nhãn Dán</th>
+                <th style="width: 30%; text-align: center;">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="searchable-tag">
+                    <td class="tag-name">
+                        <span class="tag-chip" style="font-size: 1rem; padding: 0.4rem 0.8rem;">@item.TenThe</span>
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-center">
+                            <form asp-area="Admin" asp-controller="QuanTriThe" asp-action="Xoa" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa Thể loại này? Truyện đang gắn Thể loại này sẽ bị gỡ bỏ nhãn.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.MaThe" />
+                                <button class="btn-action btn-delete btn-cyber-danger" type="submit">Xóa Tag</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var searchInput = document.getElementById('liveSearchTag');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    let keyword = e.target.value.toLowerCase().trim();
+                    let rows = document.querySelectorAll('.searchable-tag');
+
+                    rows.forEach(row => {
+                        // Lấy text của tag để so sánh
+                        let name = row.querySelector('.tag-name').innerText.toLowerCase();
+                        if (name.includes(keyword)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+}

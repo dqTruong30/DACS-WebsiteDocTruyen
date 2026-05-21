@@ -1,0 +1,744 @@
+@model HutechNovel.Models.HomeViewModel
+@using HutechNovel.Models
+@using System.Security.Claims
+
+@{
+    ViewData["Title"] = "Trang Chủ";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // HÀM VIỆT HÓA TRẠNG THÁI
+    string StatusText(TrangThaiTruyen status) => status switch
+    {
+        TrangThaiTruyen.DaHoanThanh => "Đã hoàn thành",
+        TrangThaiTruyen.TamNgung => "Tạm ngưng",
+        _ => "Đang tiến hành"
+    };
+
+    string UpdateTimeText(DateTime updatedAt)
+    {
+        var delta = DateTime.Now - updatedAt;
+        if (delta.TotalMinutes < 1) return "Vừa xong";
+        if (delta.TotalHours < 1) return $"{Math.Max(1, (int)delta.TotalMinutes)} Phút Trước";
+        if (delta.TotalDays < 1) return $"{Math.Max(1, (int)delta.TotalHours)} Giờ Trước";
+        if (delta.TotalDays < 7) return $"{Math.Max(1, (int)delta.TotalDays)} Ngày Trước";
+        if (delta.TotalDays < 30) return $"{Math.Max(1, (int)(delta.TotalDays / 7))} Tuần Trước";
+        return updatedAt.ToString("dd/MM/yyyy");
+    }
+}
+
+<style>
+    /* Lưới 4 cột cố định */
+    .grid-4-cols {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+
+    @@media (max-width: 992px) {
+        .grid-4-cols {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .grid-4-cols {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Thanh tìm kiếm lịch sử */
+    .history-search-input {
+        padding-right: 35px;
+    }
+
+        .history-search-input::placeholder {
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+    /* Scroll vừa khít 4 item lịch sử */
+    .history-scroll {
+        max-height: 410px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 8px;
+    }
+
+        .history-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .history-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .history-scroll::-webkit-scrollbar-thumb {
+            background: var(--public-border);
+            border-radius: 10px;
+        }
+
+            .history-scroll::-webkit-scrollbar-thumb:hover {
+                background: var(--public-green);
+            }
+
+    /* Card lịch sử */
+    .history-item {
+        background: var(--public-surface-2);
+        border: 1px solid var(--public-border);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.8rem;
+        position: relative;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+        .history-item:hover {
+            border-color: var(--public-green);
+            transform: translateY(-2px);
+        }
+
+    .btn-remove-history {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: var(--public-muted);
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: color 0.2s ease;
+        padding: 0;
+    }
+
+        .btn-remove-history:hover {
+            color: var(--public-red);
+        }
+
+    .btn-continue-history {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: var(--public-green-soft);
+        color: var(--public-green);
+        border: 1px solid var(--public-green);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .btn-continue-history:hover {
+            background: var(--public-green);
+            color: #111;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(53, 255, 97, 0.4);
+        }
+
+    .story-card--hoverable {
+        position: relative;
+        overflow: visible;
+    }
+
+    .story-card__media {
+        display: block;
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius-md);
+    }
+
+        .story-card__media img {
+            transition: transform 0.3s ease;
+        }
+
+    .story-card--hoverable:hover .story-card__media img {
+        transform: scale(1.05);
+    }
+
+    .story-card--hoverable .story-title,
+    .story-card--hoverable .story-meta {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .story-update-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 4;
+        border-radius: 6px;
+        background: #2f80ed;
+        color: #fff;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+    }
+
+    .quick-follow-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 6;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-radius: 6px;
+        background: rgba(12, 16, 18, 0.58);
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    }
+
+        .quick-follow-btn:hover,
+        .quick-follow-btn.is-active {
+            border-color: var(--public-green);
+            background: rgba(53, 255, 97, 0.16);
+            color: var(--public-green);
+        }
+
+        .quick-follow-btn:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+    .story-info-popover {
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 12px;
+        z-index: 20;
+        width: min(320px, 84vw);
+        padding: 0.85rem;
+        border: 1px solid var(--public-border);
+        border-radius: 8px;
+        background: var(--public-surface);
+        color: var(--public-text);
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(8px);
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+        pointer-events: none;
+    }
+
+    .story-card--hoverable:hover .story-info-popover {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .story-info-popover__title {
+        margin: 0 0 0.35rem;
+        color: var(--public-green);
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .story-info-popover__line {
+        margin: 0.15rem 0;
+        font-size: 0.88rem;
+    }
+
+    .story-info-popover__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-top: 0.65rem;
+    }
+
+    .story-info-popover__tag {
+        border-radius: 6px;
+        background: var(--public-green-soft);
+        color: var(--public-green);
+        padding: 0.22rem 0.45rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .story-info-popover__summary {
+        display: -webkit-box;
+        margin: 0.75rem 0 0;
+        overflow: hidden;
+        color: var(--public-text);
+        font-size: 0.86rem;
+        line-height: 1.45;
+        -webkit-line-clamp: 6;
+        -webkit-box-orient: vertical;
+    }
+
+    @@media (max-width: 992px) {
+        .story-info-popover {
+            left: 0;
+            right: 0;
+            top: calc(100% + 10px);
+        }
+    }
+</style>
+
+<section class="hero-layout">
+    <div class="hero-banner" style="@(!string.IsNullOrEmpty(Model.BannerUrl) ? $"background-image: linear-gradient(to right, rgba(17, 17, 17, 0.9) 10%, rgba(17, 17, 17, 0.4) 100%), url('{Model.BannerUrl}'); background-size: cover; background-position: center;" : "")">
+        <div class="section-kicker">Khám phá vũ trụ tiểu thuyết</div>
+        <h1 style="max-width: 800px;">Nền tảng đọc truyện tối ưu tốc độ, cập nhật nhanh nhất các tác phẩm Hot.</h1>
+        <p class="muted" style="max-width: 600px; font-size: 1.1rem;">Tham gia cộng đồng hàng ngàn độc giả, lưu trữ lịch sử đọc tự động và tùy biến giao diện đọc theo sở thích của bạn.</p>
+        <div class="hero-actions">
+            <a class="btn-neon" asp-controller="TimKiem" asp-action="Index"><i class="fas fa-book-open me-2"></i>Vào kho truyện</a>
+            <a class="btn-ghost" asp-controller="XepHang" asp-action="Index"><i class="fas fa-trophy me-2"></i>Bảng xếp hạng</a>
+        </div>
+    </div>
+
+    <aside class="hero-side">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-kicker m-0">Tiếp tục hành trình</div>
+        </div>
+        <h2 class="section-title mb-3">Truyện vừa đọc</h2>
+
+        <div class="position-relative mb-3">
+            <input type="text" id="searchHistoryInput" class="field w-100 history-search-input" placeholder="Tìm kiếm truyện vừa đọc..." />
+            <i class="fas fa-search position-absolute" style="right: 12px; top: 50%; transform: translateY(-50%); color: var(--public-muted);"></i>
+        </div>
+
+        <div class="history-scroll" id="localHistoryList">
+            @if (User.Identity.IsAuthenticated && Model.LichSuDocs.Any())
+            {
+                foreach (var item in Model.LichSuDocs)
+                {
+                    <div class="history-item searchable-history" data-id="@item.MaLichSu">
+                        <button class="btn-remove-history" data-id="@item.MaLichSu" title="Xóa khỏi lịch sử"><i class="fas fa-times"></i></button>
+                        <h3 class="story-title mt-0 mb-1 pe-4 text-truncate history-title" title="@item.Chuong.Truyen.TieuDe">
+                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Chuong.MaTruyen" style="color: var(--public-text);">@item.Chuong.Truyen.TieuDe</a>
+                        </h3>
+                        <div class="muted small mb-1 text-truncate pe-5" title="Chương @item.Chuong.SoChuong: @item.Chuong.TieuDe">
+                            <i class="fas fa-bookmark me-1" style="color: var(--public-pink);"></i> Chương @item.Chuong.SoChuong: @item.Chuong.TieuDe
+                        </div>
+                        <a asp-controller="DocTruyen" asp-action="Index"
+                           asp-route-maTruyen="@item.Chuong.MaTruyen"
+                           asp-route-soChuong="@item.Chuong.SoChuong"
+                           class="btn-continue-history" title="Đọc tiếp">
+                            <i class="fas fa-play" style="margin-left: 2px;"></i>
+                        </a>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-box p-3" style="min-height: 100px;">
+                    Chưa có lịch sử. Hãy đăng nhập và đọc truyện để hệ thống ghi nhớ!
+                </div>
+            }
+        </div>
+    </aside>
+</section>
+
+
+
+<section class="panel mb-4">
+    <div class="section-kicker">Được nhiều quan tâm</div>
+    <h2 class="section-title mb-4">Top thịnh hành</h2>
+
+    @if (Model.TruyenHot.Any())
+    {
+        <div class="grid-4-cols">
+            @foreach (var item in Model.TruyenHot)
+            {
+                var truyen = item.Truyen;
+                <article class="story-card story-card--hoverable">
+                    <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen" class="story-card__media">
+                        <img class="story-cover w-100"
+                             src="@(string.IsNullOrWhiteSpace(truyen.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : truyen.AnhBia)"
+                             alt="@truyen.TieuDe"
+                             style="aspect-ratio: 3/4; object-fit: cover;"
+                             onerror="this.onerror=null; this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <span class="story-update-badge">@UpdateTimeText(truyen.NgayCapNhat)</span>
+                    </a>
+                    <button class="quick-follow-btn @(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "is-active" : "")"
+                            type="button"
+                            data-story-id="@truyen.MaTruyen"
+                            title="Theo dõi nhanh"
+                            aria-label="Theo dõi nhanh @truyen.TieuDe">
+                        <i class="@(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "fas" : "far") fa-bookmark"></i>
+                    </button>
+                    <div class="story-info-popover">
+                        <h4 class="story-info-popover__title">@truyen.TieuDe</h4>
+                        <div class="story-info-popover__line"><strong>Tình trạng:</strong> @StatusText(truyen.TrangThai)</div>
+                        <div class="story-info-popover__line"><strong>Tác giả:</strong> @(truyen.TacGia?.TenTacGia ?? "Đang cập nhật")</div>
+                        <div class="story-info-popover__line"><strong>Lượt xem:</strong> @truyen.TongLuotXem.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt thích:</strong> @truyen.YeuThichs.Count.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt theo dõi:</strong> <span data-follow-count-for="@truyen.MaTruyen">@truyen.TheoDoiTruyens.Count.ToString("N0")</span></div>
+                        @if (truyen.Thes.Any())
+                        {
+                            <div class="story-info-popover__tags">
+                                @foreach (var tag in truyen.Thes.Take(8))
+                                {
+                                    <span class="story-info-popover__tag">@tag.TenThe</span>
+                                }
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(truyen.MoTa))
+                        {
+                            <p class="story-info-popover__summary">@truyen.MoTa</p>
+                        }
+                    </div>
+                    <div class="story-body p-3">
+                        <h3 class="story-title text-truncate mb-1" title="@truyen.TieuDe">
+                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen">@truyen.TieuDe</a>
+                        </h3>
+                        <div class="story-meta mt-3 d-flex flex-wrap gap-2">
+                            <span class="meta-tag" style="font-size: 0.75rem; padding: 0.2rem 0.4rem;" title="Tổng số chương">
+                                <i class="fas fa-list-ul me-1" style="color: var(--public-green);"></i>@truyen.TongSoChuong.ToString("N0") chương
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-box">Chưa có dữ liệu truyện thịnh hành.</div>
+    }
+</section>
+
+<!-- MỚI CẬP NHẬT -->
+<section class="panel mb-4">
+    <div class="section-kicker">Mới cập nhật</div>
+    <h2 class="section-title mb-4">Danh sách cập nhật gần nhất</h2>
+    @if (Model.TruyenMoiCapNhat.Any())
+    {
+        <ul class="chapter-list">
+            @foreach (var item in Model.TruyenMoiCapNhat)
+            {
+                <li class="chapter-item" style="grid-template-columns: 140px 1fr 180px; align-items: center; padding: 1rem 0;">
+                    <!-- SỬ DỤNG HÀM VIỆT HÓA Ở ĐÂY -->
+                    <div class="status-chip text-center" style="font-size: 0.8rem;">@StatusText(item.TrangThai)</div>
+                    <div>
+                        <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.MaTruyen" style="font-size: 1.1rem; color: var(--public-text);" title="@item.TieuDe">
+                            <strong>@item.TieuDe</strong>
+                        </a>
+                        <div class="muted mt-1" style="font-size: 0.9rem;" title="@(item.TacGia?.TenTacGia)"><i class="fas fa-pen-nib me-1"></i>@(item.TacGia?.TenTacGia ?? "Đang cập nhật")</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="muted fw-bold" style="color: var(--public-green);">Chương @item.TongSoChuong</div>
+                        <div class="muted small mt-1">
+                            <i class="far fa-clock me-1"></i>@item.NgayCapNhat.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <div class="empty-box">Chưa có truyện mới cập nhật.</div>
+    }
+</section>
+
+<!-- TOP TRUYỆN NGÀY -->
+<section class="panel mb-4">
+    <div class="section-kicker">Bảng xếp hạng ngày</div>
+    <h2 class="section-title mb-4">Xem nhiều nhất hôm nay</h2>
+    @if (Model.TopTruyenNgay.Any())
+    {
+        <div class="grid-4-cols">
+            @foreach (var item in Model.TopTruyenNgay)
+            {
+                var truyen = item.Truyen;
+                <article class="story-card story-card--hoverable">
+                    <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen" class="story-card__media">
+                        <img class="story-cover w-100"
+                             src="@(string.IsNullOrWhiteSpace(truyen.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : truyen.AnhBia)"
+                             alt="@truyen.TieuDe"
+                             style="aspect-ratio: 3/4; object-fit: cover;"
+                             onerror="this.onerror=null; this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <span class="story-update-badge">@UpdateTimeText(truyen.NgayCapNhat)</span>
+                    </a>
+                    <button class="quick-follow-btn @(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "is-active" : "")"
+                            type="button"
+                            data-story-id="@truyen.MaTruyen"
+                            title="Theo dõi nhanh"
+                            aria-label="Theo dõi nhanh @truyen.TieuDe">
+                        <i class="@(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "fas" : "far") fa-bookmark"></i>
+                    </button>
+                    <div class="story-info-popover">
+                        <h4 class="story-info-popover__title">@truyen.TieuDe</h4>
+                        <div class="story-info-popover__line"><strong>Tình trạng:</strong> @StatusText(truyen.TrangThai)</div>
+                        <div class="story-info-popover__line"><strong>Tác giả:</strong> @(truyen.TacGia?.TenTacGia ?? "Đang cập nhật")</div>
+                        <div class="story-info-popover__line"><strong>Lượt xem:</strong> @truyen.TongLuotXem.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt thích:</strong> @truyen.YeuThichs.Count.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt theo dõi:</strong> <span data-follow-count-for="@truyen.MaTruyen">@truyen.TheoDoiTruyens.Count.ToString("N0")</span></div>
+                        @if (truyen.Thes.Any())
+                        {
+                            <div class="story-info-popover__tags">
+                                @foreach (var tag in truyen.Thes.Take(8))
+                                {
+                                    <span class="story-info-popover__tag">@tag.TenThe</span>
+                                }
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(truyen.MoTa))
+                        {
+                            <p class="story-info-popover__summary">@truyen.MoTa</p>
+                        }
+                    </div>
+                    <div class="story-body p-3">
+                        <h3 class="story-title text-truncate mb-1" title="@truyen.TieuDe">
+                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen">@truyen.TieuDe</a>
+                        </h3>
+                        <div class="story-meta mt-3 d-flex flex-wrap gap-2">
+                            <span class="meta-tag" style="font-size: 0.75rem; padding: 0.2rem 0.4rem;" title="Tổng số chương">
+                                <i class="fas fa-list-ul me-1" style="color: var(--public-green);"></i>@truyen.TongSoChuong.ToString("N0") chương
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-box">Chưa có dữ liệu lượt đọc trong hôm nay.</div>
+    }
+</section>
+
+<!-- TOP TRUYỆN TUẦN -->
+<section class="panel">
+    <div class="section-kicker">Bảng xếp hạng tuần</div>
+    <h2 class="section-title mb-4">Xem nhiều nhất tuần này</h2>
+    @if (Model.TopTruyenTuan.Any())
+    {
+        <div class="grid-4-cols">
+            @foreach (var item in Model.TopTruyenTuan)
+            {
+                var truyen = item.Truyen;
+                <article class="story-card story-card--hoverable">
+                    <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen" class="story-card__media">
+                        <img class="story-cover w-100"
+                             src="@(string.IsNullOrWhiteSpace(truyen.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : truyen.AnhBia)"
+                             alt="@truyen.TieuDe"
+                             style="aspect-ratio: 3/4; object-fit: cover;"
+                             onerror="this.onerror=null; this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <span class="story-update-badge">@UpdateTimeText(truyen.NgayCapNhat)</span>
+                    </a>
+                    <button class="quick-follow-btn @(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "is-active" : "")"
+                            type="button"
+                            data-story-id="@truyen.MaTruyen"
+                            title="Theo dõi nhanh"
+                            aria-label="Theo dõi nhanh @truyen.TieuDe">
+                        <i class="@(currentUserId != null && truyen.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "fas" : "far") fa-bookmark"></i>
+                    </button>
+                    <div class="story-info-popover">
+                        <h4 class="story-info-popover__title">@truyen.TieuDe</h4>
+                        <div class="story-info-popover__line"><strong>Tình trạng:</strong> @StatusText(truyen.TrangThai)</div>
+                        <div class="story-info-popover__line"><strong>Tác giả:</strong> @(truyen.TacGia?.TenTacGia ?? "Đang cập nhật")</div>
+                        <div class="story-info-popover__line"><strong>Lượt xem:</strong> @truyen.TongLuotXem.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt thích:</strong> @truyen.YeuThichs.Count.ToString("N0")</div>
+                        <div class="story-info-popover__line"><strong>Lượt theo dõi:</strong> <span data-follow-count-for="@truyen.MaTruyen">@truyen.TheoDoiTruyens.Count.ToString("N0")</span></div>
+                        @if (truyen.Thes.Any())
+                        {
+                            <div class="story-info-popover__tags">
+                                @foreach (var tag in truyen.Thes.Take(8))
+                                {
+                                    <span class="story-info-popover__tag">@tag.TenThe</span>
+                                }
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(truyen.MoTa))
+                        {
+                            <p class="story-info-popover__summary">@truyen.MoTa</p>
+                        }
+                    </div>
+                    <div class="story-body p-3">
+                        <h3 class="story-title text-truncate mb-1" title="@truyen.TieuDe">
+                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@truyen.MaTruyen">@truyen.TieuDe</a>
+                        </h3>
+                        <div class="story-meta mt-3 d-flex flex-wrap gap-2">
+                            <span class="meta-tag" style="font-size: 0.75rem; padding: 0.2rem 0.4rem;" title="Tổng số chương">
+                                <i class="fas fa-list-ul me-1" style="color: var(--public-green);"></i>@truyen.TongSoChuong.ToString("N0") chương
+                            </span>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-box">Chưa có dữ liệu lượt đọc trong tuần này.</div>
+    }
+</section>
+
+<section class="panel mb-4">
+    <div class="section-kicker">Dựa trên gu đọc của bạn</div>
+    <h2 class="section-title mb-4">Có thể bạn thích</h2>
+    <div class="grid-4-cols">
+        @foreach (var story in Model.SmartRecommendations.Take(4))
+        {
+            <article class="story-card story-card--hoverable">
+                <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen" class="story-card__media">
+                    <img class="story-cover w-100"
+                         src="@(string.IsNullOrWhiteSpace(story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : story.AnhBia)"
+                         alt="@story.TieuDe"
+                         style="aspect-ratio: 3/4; object-fit: cover;"
+                         onerror="this.onerror=null; this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                    <span class="story-update-badge">@UpdateTimeText(story.NgayCapNhat)</span>
+                </a>
+                <button class="quick-follow-btn @(currentUserId != null && story.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "is-active" : "")"
+                        type="button"
+                        data-story-id="@story.MaTruyen"
+                        title="Theo dõi nhanh"
+                        aria-label="Theo dõi nhanh @story.TieuDe">
+                    <i class="@(currentUserId != null && story.TheoDoiTruyens.Any(x => x.MaNguoiDung == currentUserId) ? "fas" : "far") fa-bookmark"></i>
+                </button>
+                <div class="story-info-popover">
+                    <h4 class="story-info-popover__title">@story.TieuDe</h4>
+                    <div class="story-info-popover__line"><strong>Tình trạng:</strong> @StatusText(story.TrangThai)</div>
+                    <div class="story-info-popover__line"><strong>Tác giả:</strong> @(story.TacGia?.TenTacGia ?? "Đang cập nhật")</div>
+                    <div class="story-info-popover__line"><strong>Lượt xem:</strong> @story.TongLuotXem.ToString("N0")</div>
+                    <div class="story-info-popover__line"><strong>Lượt thích:</strong> @story.YeuThichs.Count.ToString("N0")</div>
+                    <div class="story-info-popover__line"><strong>Lượt theo dõi:</strong> <span data-follow-count-for="@story.MaTruyen">@story.TheoDoiTruyens.Count.ToString("N0")</span></div>
+                    @if (story.Thes.Any())
+                    {
+                        <div class="story-info-popover__tags">
+                            @foreach (var tag in story.Thes.Take(8))
+                            {
+                                <span class="story-info-popover__tag">@tag.TenThe</span>
+                            }
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(story.MoTa))
+                    {
+                        <p class="story-info-popover__summary">@story.MoTa</p>
+                    }
+                </div>
+                <div class="story-body p-3">
+                    <h3 class="story-title text-truncate mb-1" title="@story.TieuDe">
+                        <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen">@story.TieuDe</a>
+                    </h3>
+                    <div class="story-meta mt-3 d-flex flex-wrap gap-2">
+                        <span class="meta-tag" style="font-size: 0.75rem; padding: 0.2rem 0.4rem;" title="Tổng số chương">
+                            <i class="fas fa-list-ul me-1" style="color: var(--public-green);"></i>@story.TongSoChuong.ToString("N0") chương
+                        </span>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // === LOGIC TÌM KIẾM BÊN TRONG LỊCH SỬ THẬT ===
+            const searchInput = document.getElementById('searchHistoryInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const keyword = e.target.value.toLowerCase().trim();
+                    const items = document.querySelectorAll('.searchable-history');
+
+                    items.forEach(item => {
+                        const titleEl = item.querySelector('.history-title a');
+                        if (titleEl) {
+                            const title = titleEl.innerText.toLowerCase();
+                            if (title.includes(keyword)) {
+                                item.style.display = 'block';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+
+            // === LOGIC XÓA LỊCH SỬ BẰNG AJAX ===
+            const deleteButtons = document.querySelectorAll('.btn-remove-history');
+            deleteButtons.forEach(btn => {
+                btn.addEventListener('click', async function () {
+                    const idLichSu = this.getAttribute('data-id');
+
+                    const form = new FormData();
+                    form.append("maLichSu", idLichSu);
+
+                    try {
+                        const response = await fetch('/api/TuongTac/XoaLichSu', {
+                            method: 'POST',
+                            body: form
+                        });
+
+                        if (response.ok) {
+                            const itemToHide = document.querySelector(`.history-item[data-id="${idLichSu}"]`);
+                            if(itemToHide) {
+                                itemToHide.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                                itemToHide.style.opacity = '0';
+                                itemToHide.style.transform = 'translateX(20px)';
+                                setTimeout(() => {
+                                    itemToHide.remove();
+                                    const historyContainer = document.getElementById('localHistoryList');
+                                    if (historyContainer && historyContainer.querySelectorAll('.history-item').length === 0) {
+                                        historyContainer.innerHTML = `
+                                            <div class="empty-box p-3" style="min-height: 100px;">
+                                                Chưa có lịch sử. Hãy đăng nhập và đọc truyện để hệ thống ghi nhớ!
+                                            </div>`;
+                                    }
+                                }, 300);
+                            }
+                        } else {
+                            alert('Có lỗi xảy ra, không thể xóa lịch sử.');
+                        }
+                    } catch (err) {
+                        alert('Lỗi kết nối đến máy chủ.');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.quick-follow-btn').forEach(button => {
+                button.addEventListener('click', async function () {
+                    const storyId = this.getAttribute('data-story-id');
+                    const form = new FormData();
+                    form.append('maTruyen', storyId);
+
+                    this.disabled = true;
+                    try {
+                        const response = await fetch('/api/TuongTac/TheoDoi', {
+                            method: 'POST',
+                            body: form
+                        });
+
+                        if (response.status === 401) {
+                            window.location.href = '/Identity/Account/Login';
+                            return;
+                        }
+
+                        if (!response.ok) return;
+
+                        const result = await response.json();
+                        document.querySelectorAll(`.quick-follow-btn[data-story-id="${storyId}"]`).forEach(item => {
+                            item.classList.toggle('is-active', result.active);
+                            const icon = item.querySelector('i');
+                            if (icon) {
+                                icon.classList.toggle('fas', result.active);
+                                icon.classList.toggle('far', !result.active);
+                            }
+                        });
+
+                        document.querySelectorAll(`[data-follow-count-for="${storyId}"]`).forEach(item => {
+                            item.textContent = Number(result.count).toLocaleString('vi-VN');
+                        });
+                    } catch (err) {
+                        alert('Lỗi kết nối đến máy chủ.');
+                    } finally {
+                        this.disabled = false;
+                    }
+                });
+            });
+        });
+    </script>
+}

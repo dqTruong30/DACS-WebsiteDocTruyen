@@ -1,0 +1,37 @@
+@using Microsoft.AspNetCore.Identity
+@using HutechNovel.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@{
+    var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+    string ActiveClass(string page)
+    {
+        var activePage = ViewContext.RouteData.Values["Page"]?.ToString();
+        return activePage == page ? "is-active" : string.Empty;
+    }
+}
+
+<nav class="manage-nav">
+    <a class="@ActiveClass("/Account/Manage/Index")" asp-page="./Index">
+        <span>👤</span>
+        <span>Hồ sơ cá nhân</span>
+    </a>
+    <a class="@ActiveClass("/Account/Manage/Email")" asp-page="./Email">
+        <span>✉</span>
+        <span>Quản lý Email</span>
+    </a>
+    <a class="@ActiveClass("/Account/Manage/ChangePassword")" asp-page="./ChangePassword">
+        <span>🔑</span>
+        <span>Đổi mật khẩu</span>
+    </a>
+    @if (hasExternalLogins)
+    {
+        <a class="@ActiveClass("/Account/Manage/ExternalLogins")" asp-page="./ExternalLogins">
+            <span>🔗</span>
+            <span>Liên kết ngoài</span>
+        </a>
+    }
+    <a class="@ActiveClass("/Account/Manage/PersonalData")" asp-page="./PersonalData">
+        <span>🛡</span>
+        <span>Dữ liệu cá nhân</span>
+    </a>
+</nav>

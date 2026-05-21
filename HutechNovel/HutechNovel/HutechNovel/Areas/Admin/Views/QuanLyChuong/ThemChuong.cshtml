@@ -1,0 +1,92 @@
+@model HutechNovel.Models.Chuong
+
+@{
+    string selectedStatus = Model?.TrangThai.ToString() ?? TrangThaiChuong.DaXuatBan.ToString();
+    ViewData["Title"] = "Thêm Chương Mới";
+}
+
+<section class="panel">
+    <div class="mb-4">
+        <div class="section-kicker">Đăng chương trực tiếp</div>
+        <h1 class="page-title">Tạo chương mới</h1>
+    </div>
+
+    <form asp-area="Admin" asp-controller="QuanLyChuong" asp-action="ThemChuong" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="maTruyen" value="@ViewBag.MaTruyen" />
+        
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="fw-bold mb-2">Trạng thái chương</label>
+                <select name="trangThai" id="chapterStatus" class="field">
+                    <option value="@TrangThaiChuong.DaXuatBan" selected="@(selectedStatus == TrangThaiChuong.DaXuatBan.ToString())">Đăng ngay</option>
+                    <option value="@TrangThaiChuong.BanNhap" selected="@(selectedStatus == TrangThaiChuong.BanNhap.ToString())">Lưu nháp</option>
+                    <option value="@TrangThaiChuong.HenGio" selected="@(selectedStatus == TrangThaiChuong.HenGio.ToString())">Hẹn giờ đăng</option>
+                </select>
+            </div>
+            <div class="col-md-6" id="scheduleField">
+                <label class="fw-bold mb-2">Thời điểm đăng</label>
+                <input type="datetime-local" name="ngayHenGio" class="field" value="@(Model?.NgayHenGio?.ToString("yyyy-MM-ddTHH:mm"))" />
+                @Html.ValidationMessage("NgayHenGio", new { @class = "text-danger small" })
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="fw-bold mb-2">Tiêu đề chương</label>
+            <input type="text" name="tieuDe" class="field" placeholder="VD: Chương 1: Bắt đầu" required autocomplete="off" value="@Model?.TieuDe" />
+            @Html.ValidationMessage("TieuDe", new { @class = "text-danger small" })
+        </div>
+        
+        <div class="mb-3">
+            <label class="fw-bold mb-2">Nội dung Raw (Tiếng Trung/Bản gốc)</label>
+            <textarea name="noiDungRaw" class="field-textarea" style="min-height: 250px;" placeholder="Nhập Nội dung Raw..."></textarea>
+        </div>
+        
+        <div class="mb-4">
+            <label class="fw-bold mb-2">Nội dung Convert/Dịch</label>
+            <textarea name="noiDungText" class="field-textarea" style="min-height: 350px;" placeholder="Nhập Nội dung Convert/Dịch..."></textarea>
+        </div>
+        
+        <div class="d-flex gap-3">
+            <button class="btn-neon" type="submit">
+                <i class="fas fa-save me-2"></i> Lưu chương
+            </button>
+            <a class="btn-ghost" asp-action="DanhSach" asp-route-maTruyen="@ViewBag.MaTruyen">Quay lại</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const form = document.querySelector('form');
+            const status = document.getElementById('chapterStatus');
+            const schedule = document.getElementById('scheduleField');
+            const storageKey = `hutech-uploader-draft-new-${@ViewBag.MaTruyen}`;
+            const fields = form ? Array.from(form.querySelectorAll('input[name="tieuDe"], textarea[name="noiDungRaw"], textarea[name="noiDungText"]')) : [];
+
+            function toggleSchedule() {
+                if (schedule && status) schedule.style.display = status.value === '@TrangThaiChuong.HenGio' ? '' : 'none';
+            }
+
+            try {
+                const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                fields.forEach(field => {
+                    if (!field.value && saved[field.name]) field.value = saved[field.name];
+                });
+            } catch { }
+
+            fields.forEach(field => {
+                field.addEventListener('input', () => {
+                    const data = {};
+                    fields.forEach(item => data[item.name] = item.value);
+                    localStorage.setItem(storageKey, JSON.stringify(data));
+                });
+            });
+
+            form?.addEventListener('submit', () => localStorage.removeItem(storageKey));
+            status?.addEventListener('change', toggleSchedule);
+            toggleSchedule();
+        })();
+    </script>
+}

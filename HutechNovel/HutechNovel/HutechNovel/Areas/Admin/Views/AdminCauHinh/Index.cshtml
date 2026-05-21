@@ -1,0 +1,186 @@
+﻿@model HutechNovel.Models.CauHinhHeThong
+
+@{
+    ViewData["Title"] = "Cấu Hình Hệ Thống";
+}
+
+<form id="configForm" asp-action="LuuCauHinh" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" name="removeBanner" id="removeBannerInput" value="false" />
+
+    <section class="panel mb-4" style="border-left: 4px solid #fbbf24;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <div class="section-kicker" style="color: #fbbf24;">System Settings</div>
+                <h1 class="page-title text-uppercase" style="margin:0;">Cấu Hình Website</h1>
+            </div>
+            <button type="submit" class="btn-neon" style="color: #fbbf24; border-color: #fbbf24;">
+                <i class="fas fa-save me-2"></i> Lưu Cấu Hình
+            </button>
+        </div>
+    </section>
+
+    <section class="two-column">
+        <div class="d-flex flex-column gap-4">
+            <article class="panel">
+                <h2 class="section-title mb-4">⚙ Thông tin cơ bản</h2>
+                <div class="form-group mb-3">
+                    <label asp-for="TenWebsite" class="fw-bold mb-2">Tên Website *</label>
+                    <input asp-for="TenWebsite" class="field" required />
+                </div>
+                <div class="form-group mb-3">
+                    <label asp-for="EmailLienHe" class="fw-bold mb-2">Email Liên hệ</label>
+                    <input asp-for="EmailLienHe" type="email" class="field" />
+                </div>
+            </article>
+
+            <article class="panel">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <h2 class="section-title">🖼️ Banner Trang Chủ</h2>
+                    @if (!string.IsNullOrEmpty(Model.BannerUrl))
+                    {
+                        <button type="button" class="btn-action btn-delete btn-cyber-danger" onclick="handleRemoveBanner()">
+                            <i class="fas fa-trash-alt me-1"></i> GỠ BANNER
+                        </button>
+                    }
+                </div>
+
+                <div id="bannerPreviewContainer" class="mb-3 @(string.IsNullOrEmpty(Model.BannerUrl) ? "d-none" : "")">
+                    <div style="border-radius: 12px; overflow: hidden; border: 1px solid var(--admin-border); background: #000;">
+                        <div id="previewMedia">
+                            @if (!string.IsNullOrEmpty(Model.BannerUrl))
+                            {
+                                if (Model.BannerUrl.Contains(".mp4") || Model.BannerUrl.Contains(".webm"))
+                                {
+                                    <video src="@Model.BannerUrl" autoplay loop muted playsinline style="width:100%; max-height:250px; object-fit:contain;"></video>
+                                }
+                                else
+                                {
+                                    <img src="@Model.BannerUrl" style="width:100%; max-height:250px; object-fit:contain;" />
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="fw-bold mb-2">Cách 1: Kéo thả hoặc Chọn file</label>
+                    <div id="dropzone" style="border: 2px dashed var(--admin-green); border-radius: 12px; padding: 1.5rem; text-align: center; cursor: pointer; background: rgba(53, 210, 120, 0.05);">
+                        <i class="fas fa-cloud-upload-alt mb-2" style="font-size: 1.5rem; color: var(--admin-green);"></i>
+                        <div id="dropzone-text" style="font-size: 0.9rem;">Kéo thả file vào đây hoặc Click để chọn</div>
+                        <input type="file" name="fileBanner" id="fileBanner" accept="image/*,video/mp4,video/webm" style="display: none;" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="fw-bold mb-2">Cách 2: Sử dụng Link (URL)</label>
+                    <input type="text" name="linkBanner" id="linkBannerInput" class="field"
+                           placeholder="https://example.com/banner.jpg"
+                           value="@(Model.BannerUrl != null && Model.BannerUrl.StartsWith("http") ? Model.BannerUrl : "")"
+                           oninput="handleLinkInput(this.value)" />
+                </div>
+            </article>
+        </div>
+
+        <div class="d-flex flex-column gap-4">
+            <article class="panel">
+                <h2 class="section-title mb-4">📢 Thông báo toàn website</h2>
+                <textarea asp-for="ThongBaoToanCuc" class="field-textarea" style="min-height: 120px;"></textarea>
+            </article>
+
+            <article class="panel" style="border-color: rgba(255, 85, 85, 0.4);">
+                <h2 class="section-title mb-3" style="color: var(--public-red);">☢️ Bảo trì</h2>
+                <div class="d-flex align-items-center p-3 mt-3" style="background: rgba(255, 85, 85, 0.08); border-radius: 10px;">
+                    <div class="form-check form-switch">
+                        <input asp-for="CheDoBaoTri" class="form-check-input" type="checkbox">
+                        <label class="form-check-label fw-bold ms-2" for="CheDoBaoTri">Bật Bảo Trì</label>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileBanner');
+        const linkInput = document.getElementById('linkBannerInput');
+        const removeInput = document.getElementById('removeBannerInput');
+        const previewContainer = document.getElementById('bannerPreviewContainer');
+        const previewMedia = document.getElementById('previewMedia');
+
+        function handleLinkInput(url) {
+            if (url.trim() === "") {
+                if (!fileInput.files.length) previewContainer.classList.add('d-none');
+                return;
+            }
+            removeInput.value = "false";
+            previewContainer.classList.remove('d-none');
+            
+            const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+            if (ytMatch) {
+                const embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1`;
+                previewMedia.innerHTML = `<iframe src="${embedUrl}" style="width:100%; height:250px; border:none;" allow="autoplay; encrypted-media"></iframe>`;
+            }
+            else if (url.match(/\.(mp4|webm|ogg)(?:[\?#].*)?$/i)) {
+                previewMedia.innerHTML = `<video src="${url}" autoplay loop muted style="width:100%; max-height:250px; object-fit:contain;"></video>`;
+            }
+            else if (url.match(/\.(jpeg|jpg|gif|png|webp|svg)(?:[\?#].*)?$/i)) {
+                previewMedia.innerHTML = `<img src="${url}" style="width:100%; max-height:250px; object-fit:contain;" onerror="this.src='/images/no-cover.jpg'" />`;
+            }
+            else {
+                previewMedia.innerHTML = `<iframe src="${url}" style="width:100%; height:250px; border:none; background:#fff;" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>`;
+            }
+            
+            fileInput.value = "";
+            document.getElementById('dropzone-text').innerText = "Kéo thả file vào đây hoặc Click để chọn";
+        }
+
+        function handleRemoveBanner() {
+            if (confirm("Bạn có chắc muốn gỡ bỏ banner này? File sẽ bị xóa khỏi hệ thống sau khi Lưu.")) {
+                removeInput.value = "true";
+                previewContainer.classList.add('d-none');
+                linkInput.value = "";
+                fileInput.value = "";
+                document.getElementById('dropzone-text').innerText = "Kéo thả file vào đây hoặc Click để chọn";
+            }
+        }
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.background = 'rgba(53, 210, 120, 0.2)'; });
+        dropzone.addEventListener('dragleave', () => { dropzone.style.background = 'rgba(53, 210, 120, 0.05)'; });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.background = 'rgba(53, 210, 120, 0.05)';
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFilePreview();
+            }
+        });
+
+        fileInput.addEventListener('change', updateFilePreview);
+
+        function updateFilePreview() {
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                removeInput.value = "false";
+                linkInput.value = "";
+                document.getElementById('dropzone-text').innerHTML = `<span style="color:var(--admin-green)">Đã chọn: ${file.name}</span>`;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContainer.classList.remove('d-none');
+                    if (file.type.startsWith('video/')) {
+                        previewMedia.innerHTML = `<video src="${e.target.result}" autoplay loop muted style="width:100%; max-height:250px; object-fit:contain;"></video>`;
+                    } else {
+                        previewMedia.innerHTML = `<img src="${e.target.result}" style="width:100%; max-height:250px; object-fit:contain;" />`;
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+    </script>
+}

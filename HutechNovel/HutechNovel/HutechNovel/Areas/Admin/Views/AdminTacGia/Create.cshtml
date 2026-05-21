@@ -1,0 +1,38 @@
+﻿@model HutechNovel.Models.TacGia
+
+@{
+    ViewData["Title"] = "Thêm Tác Giả";
+}
+
+<section class="panel" style="max-width: 800px; margin: 0 auto;">
+    <div class="mb-4 pb-3" style="border-bottom: 1px solid var(--admin-border);">
+        <div class="section-kicker">Tạo mới</div>
+        <h1 class="page-title">Thêm Hồ Sơ Tác Giả</h1>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="status-banner is-danger mb-3"></div>
+
+        <div class="form-group mb-4">
+            <label asp-for="TenTacGia" class="fw-bold mb-2 d-block" style="color: var(--admin-muted);">Tên Tác Giả <span class="text-danger">*</span></label>
+            <input asp-for="TenTacGia" class="field" placeholder="Ví dụ: Thiên Tàm Thổ Đậu..." required autocomplete="off" />
+            <span asp-validation-for="TenTacGia" class="text-danger small mt-1 d-block"></span>
+        </div>
+
+        <div class="form-group mb-4">
+            <label asp-for="TieuSu" class="fw-bold mb-2 d-block" style="color: var(--admin-muted);">Tiểu sử / Giới thiệu</label>
+            <textarea asp-for="TieuSu" class="field-textarea" placeholder="Nhập một vài thông tin về tác giả này..." style="min-height: 150px;"></textarea>
+            <span asp-validation-for="TieuSu" class="text-danger small mt-1 d-block"></span>
+        </div>
+
+        <div class="d-flex gap-3 mt-5 pt-3" style="border-top: 1px solid var(--admin-border);">
+            <button type="submit" class="btn-neon" style="min-width: 150px;">Lưu Dữ Liệu</button>
+            <a asp-action="Index" class="btn-ghost">Hủy & Quay lại</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

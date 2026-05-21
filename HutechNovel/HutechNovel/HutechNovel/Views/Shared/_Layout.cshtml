@@ -1,0 +1,264 @@
+@inject HutechNovel.Data.ApplicationDbContext DbContext
+@using System.Security.Claims
+@{
+    // 1. Kéo dữ liệu Cấu hình từ Database
+    var configInfo = DbContext.CauHinhHeThongs.FirstOrDefault();
+
+    var siteName = configInfo?.TenWebsite ?? "HutechNovel";
+    var seoTitle = configInfo?.TieuDeSEO ?? "Nền tảng đọc truyện trực tuyến";
+    var seoDesc = configInfo?.MoTaSEO ?? "Đọc truyện chữ, truyện convert cập nhật nhanh nhất.";
+    var contactEmail = configInfo?.EmailLienHe ?? "support@hutechnovel.com";
+
+    var defaultTags = new[]
+    {
+        "Huyền huyễn", "Đồng nhân", "Dị năng", "Đô thị", "Linh dị",
+        "Ngôn tình", "Light Novel", "Võng du", "Khoa học viễn tưởng", "Lịch sử"
+    };
+    var danhSachThe = DbContext.Thes
+        .Where(t => defaultTags.Contains(t.TenThe))
+        .OrderBy(t => t.TenThe)
+        .ToList();
+
+    var newChapterNotificationCount = 0;
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (!string.IsNullOrWhiteSpace(currentUserId))
+    {
+        var followingRows = DbContext.TheoDoiTruyens
+            .Where(td => td.MaNguoiDung == currentUserId)
+            .Select(td => new { td.MaTruyen, td.NgayTao })
+            .ToList();
+
+        var followedStoryIds = followingRows.Select(x => x.MaTruyen).ToList();
+        var latestByStory = DbContext.Chuongs
+            .Where(c => followedStoryIds.Contains(c.MaTruyen) && c.TrangThai == HutechNovel.Models.TrangThaiChuong.DaXuatBan)
+            .ToList()
+            .GroupBy(c => c.MaTruyen)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(c => c.SoChuong).First());
+
+        var lastReadByStory = DbContext.LichSuDocs
+            .Where(ls => ls.MaNguoiDung == currentUserId && followedStoryIds.Contains(ls.Chuong.MaTruyen))
+            .Select(ls => new { ls.Chuong.MaTruyen, ls.Chuong.SoChuong })
+            .ToList()
+            .GroupBy(x => x.MaTruyen)
+            .ToDictionary(group => group.Key, group => group.Max(x => x.SoChuong));
+
+        newChapterNotificationCount = followingRows.Count(item =>
+        {
+            if (!latestByStory.TryGetValue(item.MaTruyen, out var latestChapter)) return false;
+            return lastReadByStory.TryGetValue(item.MaTruyen, out var lastReadChapter)
+                ? latestChapter.SoChuong > lastReadChapter
+                : latestChapter.NgayTao > item.NgayTao;
+        });
+    }
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - @siteName | @seoTitle</title>
+    <meta name="description" content="@seoDesc" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        /* CSS cho Dropdown đồng bộ giao diện tối */
+        .theme-public .dropdown-menu {
+            background-color: #1a1a1a !important;
+            border: 1px solid #333 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .theme-public .dropdown-item {
+            color: #e0e0e0 !important;
+            transition: all 0.2s ease;
+        }
+
+            .theme-public .dropdown-item:hover {
+                background-color: #2d2d2d !important;
+                color: #00ff88 !important;
+            }
+
+        .dropdown-menu::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .notification-bell {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--public-border);
+            border-radius: 50%;
+            background: var(--public-surface-2);
+            color: var(--public-text);
+        }
+
+            .notification-bell:hover {
+                border-color: var(--public-green);
+                color: var(--public-green);
+            }
+
+        .notification-bell__badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            min-width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: var(--public-red);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 0 0.35rem;
+        }
+    </style>
+</head>
+<body class="theme-public">
+    <div class="app-shell">
+
+        <header class="app-header">
+            <div class="container app-header__inner">
+
+                <a asp-area="" asp-controller="Home" asp-action="Index" class="brand">
+                    <span class="brand__green">@siteName</span>
+                </a>
+
+                <nav class="main-nav d-flex align-items-center">
+                    <a asp-area="" asp-controller="Home" asp-action="Index">Trang Chủ</a>
+
+                    <!-- DROPDOWN THỂ LOẠI (Dùng bảng Thes) -->
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" id="navbarDropdownTheLoai" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Thể Loại
+                        </a>
+                        <ul class="dropdown-menu shadow border-0" aria-labelledby="navbarDropdownTheLoai">
+                            @if (danhSachThe != null && danhSachThe.Any())
+                            {
+                                foreach (var item in danhSachThe)
+                                {
+                                    <li>
+                                        <a class="dropdown-item py-2" asp-controller="TimKiem" asp-action="Index" asp-route-selectedTagId="@item.MaThe">
+                                            @item.TenThe
+                                        </a>
+                                    </li>
+                                }
+                            }
+                            else
+                            {
+                                <li><a class="dropdown-item py-2 disabled" href="#">Chưa có thể loại</a></li>
+                            }
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item py-2" asp-controller="TimKiem" asp-action="Index">Tất cả thể loại</a></li>
+                        </ul>
+                    </div>
+
+                    <a asp-area="" asp-controller="XepHang" asp-action="Index">Bảng Xếp Hạng</a>
+                    <a asp-area="" asp-controller="TimKiem" asp-action="Index">Lọc Truyện</a>
+                </nav>
+
+                <div class="header-actions">
+                    <form asp-area="" asp-controller="TimKiem" asp-action="Index" method="get" class="header-search" data-header-search autocomplete="off">
+                        <input type="text" name="keyword" placeholder="Tìm tên truyện..." aria-label="Tìm tên truyện" data-header-search-input />
+                        <button type="submit" aria-label="Tìm kiếm"><i class="fas fa-magnifying-glass"></i></button>
+                        <div class="header-search__suggestions" data-header-search-suggestions hidden></div>
+                    </form>
+                    <button type="button" id="themeToggle" class="theme-toggle">◐</button>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a class="notification-bell" asp-controller="NguoiDung" asp-action="ThongBao" title="Thông báo của tôi" aria-label="Thông báo của tôi">
+                            <i class="fas fa-bell"></i>
+                            @if (newChapterNotificationCount > 0)
+                            {
+                                <span class="notification-bell__badge">@newChapterNotificationCount</span>
+                            }
+                        </a>
+                    }
+                    <partial name="_LoginPartial" />
+                </div>
+
+            </div>
+            @if (configInfo != null && !string.IsNullOrWhiteSpace(configInfo.ThongBaoToanCuc))
+            {
+                <div class="global-notice-wrapper" id="globalNotice">
+                    <div class="global-notice-content">
+                        <i class="fas fa-bullhorn me-2"></i> @configInfo.ThongBaoToanCuc
+                    </div>
+                    <button class="global-notice-close" id="globalNoticeClose" type="button" aria-label="Ẩn thông báo">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+            }
+        </header>
+
+        <main class="app-main">
+            <div class="container">
+                @RenderBody()
+            </div>
+        </main>
+
+        <partial name="_AiChatBox" />
+
+        <footer class="app-footer">
+            <div class="container app-footer__inner">
+                <div>
+                    <h3 class="footer-title">@siteName</h3>
+                    <p class="footer-copy mb-1">Hệ thống đọc truyện HutechNovel.</p>
+                    <p class="muted" style="font-size: 0.9rem;"><i class="fas fa-envelope me-1"></i> @contactEmail</p>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const notice = document.getElementById("globalNotice");
+            const closeButton = document.getElementById("globalNoticeClose");
+            if (!notice) return;
+
+            const syncNoticeVisibility = () => {
+                if (notice.classList.contains("is-manually-hidden")) return;
+
+                if (window.scrollY > 80) {
+                    notice.classList.add("is-scrolled-away");
+                    return;
+                }
+
+                if (window.scrollY <= 2) {
+                    notice.classList.remove("is-scrolled-away");
+                }
+            };
+
+            closeButton?.addEventListener("click", () => {
+                notice.classList.add("is-manually-hidden");
+            });
+
+            window.addEventListener("scroll", syncNoticeVisibility, { passive: true });
+            syncNoticeVisibility();
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

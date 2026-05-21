@@ -1,0 +1,57 @@
+@model HutechNovel.Models.SearchViewModel
+@using HutechNovel.Models
+
+@functions {
+    private static string StatusText(TrangThaiTruyen status) => status switch
+    {
+        TrangThaiTruyen.DaHoanThanh => "Đã hoàn thành",
+        TrangThaiTruyen.TamNgung => "Tạm ngưng",
+        _ => "Đang tiến hành"
+    };
+}
+
+@foreach (var story in Model.Results)
+{
+    <article class="story-card story-search-card">
+        <a class="story-search-card__cover" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen" aria-label="@story.TieuDe">
+            <img class="story-cover" src="@(string.IsNullOrWhiteSpace(story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : story.AnhBia)" alt="@story.TieuDe" onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+            <span class="status-chip story-status">@StatusText(story.TrangThai)</span>
+        </a>
+
+        <div class="story-body story-search-card__body">
+            <a class="story-title story-link" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen" title="@story.TieuDe">@story.TieuDe</a>
+            <div class="muted small">
+                <i class="fas fa-pen-nib me-1"></i>
+                @if (story.MaTacGia.HasValue)
+                {
+                    <a asp-controller="TacGia" asp-action="ChiTiet" asp-route-id="@story.MaTacGia">@story.TenTacGia</a>
+                }
+                else
+                {
+                    <span>Đang cập nhật</span>
+                }
+            </div>
+
+            <p class="muted story-summary">@story.MoTa</p>
+
+            <div class="story-meta compact-tags">
+                @foreach (var tag in story.Tags.Take(3))
+                {
+                    <span class="meta-tag">@tag</span>
+                }
+            </div>
+
+            <div class="story-stat-line" aria-label="Thống kê truyện">
+                <span title="Lượt đọc"><i class="far fa-eye"></i> @story.TongLuotXem</span>
+                <span title="Lượt thích"><i class="far fa-heart"></i> @story.LuotThich</span>
+                <span title="Đánh dấu"><i class="far fa-bookmark"></i> @story.LuotDanhDau</span>
+                <span title="Số chương"><i class="fas fa-list-ul"></i> @story.TongSoChuong</span>
+            </div>
+        </div>
+    </article>
+}
+
+@if (!Model.Results.Any())
+{
+    <div class="empty-box" style="grid-column: 1 / -1;">Không tìm thấy truyện phù hợp với bộ lọc hiện tại.</div>
+}

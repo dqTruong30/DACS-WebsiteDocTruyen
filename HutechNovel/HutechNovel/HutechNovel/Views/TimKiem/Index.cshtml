@@ -1,0 +1,441 @@
+@model HutechNovel.Models.SearchViewModel
+@using HutechNovel.Models
+
+@{
+    ViewData["Title"] = "Lọc truyện";
+    var viewMilestones = new[] { 500, 1000, 5000, 10000, 50000, 100000 };
+    var chapterMilestones = new[] { 100, 200, 300, 500, 700, 1000, 2000 };
+    var startPage = Math.Max(1, Model.Page - 1);
+    var endPage = Math.Min(Model.TotalPages, Model.Page + 1);
+}
+
+<style>
+    .story-results--grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 1.25rem !important;
+    }
+
+        .story-results--grid .story-search-card__cover {
+            aspect-ratio: 3 / 4;
+            max-height: 240px;
+            width: 100%;
+        }
+
+        .story-results--grid .story-cover {
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .story-results--grid .story-title {
+            font-size: 0.95rem !important;
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.2rem !important;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .story-results--grid .story-summary {
+            -webkit-line-clamp: 2 !important;
+            font-size: 0.8rem !important;
+            margin-bottom: 0.5rem !important;
+            min-height: 2.4em !important;
+        }
+
+        .story-results--grid .story-stat-line {
+            font-size: 0.75rem !important;
+            margin-top: 0.5rem !important;
+        }
+
+        .story-results--grid .meta-tag {
+            font-size: 0.7rem !important;
+            padding: 0.2rem 0.4rem !important;
+        }
+
+    .custom-tag-btn {
+        background: var(--public-surface-2);
+        color: var(--public-text);
+        border: 1px solid var(--public-border);
+        border-radius: 8px;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+        .custom-tag-btn:hover {
+            border-color: var(--public-green);
+            color: var(--public-green);
+        }
+
+        .custom-tag-btn.is-active {
+            background: var(--public-green-soft);
+            border-color: var(--public-green);
+            color: var(--public-green);
+        }
+
+    .custom-tag-count {
+        background: rgba(255,255,255,0.1);
+        border-radius: 4px;
+        padding: 0.1rem 0.3rem;
+        font-size: 0.75rem;
+    }
+
+    @@media (max-width: 992px) {
+        .story-results--grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .story-results--grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+    }
+    #customTagList::-webkit-scrollbar {
+        display: none; /* Chrome, Safari */
+    }
+
+    #customTagList {
+        -ms-overflow-style: none; /* IE, Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+</style>
+
+<section class="panel mb-4">
+    <div class="section-kicker">Tìm kiếm và lọc truyện</div>
+    <h1 class="page-title">Kho truyện HutechNovel</h1>
+
+    <!-- FORM BAO TRÙM TẤT CẢ DỮ LIỆU TÌM KIẾM -->
+    <form method="get" class="mt-4" id="filterForm">
+        <!-- Input giữ số trang và cấu hình cuộn -->
+        <input type="hidden" name="page" id="pageInput" value="@Model.Page" />
+        <input type="hidden" name="infinite" id="infiniteInput" value="@Model.Infinite.ToString().ToLowerInvariant()" />
+        
+        <!-- Nơi chứa các Nhãn dán đã chọn (Hidden Inputs) -->
+        <div id="hiddenCustomTags">
+            @foreach (var tagId in Model.SelectedCustomTagIds)
+            {
+                <input type="hidden" name="selectedCustomTagIds" value="@tagId" />
+            }
+        </div>
+
+        <div class="p-4 mb-4" style="background: var(--public-surface-2); border: 1px solid var(--public-border); border-radius: var(--radius-lg);">
+            <!-- HÀNG 1: 2 Ô TÌM KIẾM TEXT -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="fw-bold mb-2 small muted">Tìm theo từ khóa</label>
+                    <input class="field" type="text" name="keyword" value="@Model.Keyword" placeholder="Nhập tên truyện hoặc tên tác giả..." />
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold mb-2 small muted">Tìm theo nội dung</label>
+                    <input class="field" type="text" name="summary" value="@Model.Summary" placeholder="Tìm từ khóa trong tóm tắt truyện..." />
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-bold mb-2 small muted">Tìm theo tên chương</label>
+                    <input class="field" type="text" name="chapterTitle" value="@Model.ChapterTitle" placeholder="Tìm từ khóa trong tên chương..." />
+                </div>
+            </div>
+
+            <!-- HÀNG 2: 5 Ô DROPDOWN LỌC TRUYỆN -->
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-3 mb-4">
+                <div class="col">
+                    <select class="field-select" name="status">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="0" selected="@(Model.Status == 0)">Đang tiến hành</option>
+                        <option value="1" selected="@(Model.Status == 1)">Đã hoàn thành</option>
+                        <option value="2" selected="@(Model.Status == 2)">Tạm ngưng</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="field-select" name="selectedTagId" id="mainTagSelect">
+                        <option value="">Tất cả thể loại chính</option>
+                        @foreach (var tag in Model.Tags)
+                        {
+                            <option value="@tag.MaThe" selected="@(Model.SelectedTagId == tag.MaThe)">@tag.TenThe</option>
+                        }
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="field-select" name="minViews">
+                        <option value="">Mốc lượt xem</option>
+                        @foreach (var milestone in viewMilestones)
+                        {
+                            <option value="@milestone" selected="@(Model.MinViews == milestone)">Từ @milestone.ToString("N0")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="field-select" name="minChapters">
+                        <option value="">Độ dài chương</option>
+                        @foreach (var milestone in chapterMilestones)
+                        {
+                            <option value="@milestone" selected="@(Model.MinChapters == milestone)">Từ @milestone chương</option>
+                        }
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="field-select" name="sortBy">
+                        <option value="updated" selected="@(Model.SortBy == "updated")">Mới cập nhật</option>
+                        <option value="views" selected="@(Model.SortBy == "views")">Lượt đọc tổng</option>
+                        <option value="views-day" selected="@(Model.SortBy == "views-day")">Lượt đọc ngày</option>
+                        <option value="views-week" selected="@(Model.SortBy == "views-week")">Lượt đọc tuần</option>
+                        <option value="likes" selected="@(Model.SortBy == "likes")">Lượt thích</option>
+                        <option value="follows" selected="@(Model.SortBy == "follows")">Lượt theo dõi</option>
+                        <option value="bookmarks" selected="@(Model.SortBy == "bookmarks")">Lượt đánh dấu</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- HÀNG 3: NÚT TÌM KIẾM ĐẶT DƯỚI CÙNG -->
+            <div class="text-start mt-2 pt-3" style="border-top: 1px dashed var(--public-border);">
+                <button class="btn-neon" type="button" onclick="submitFilter()" style="min-width: 200px; padding: 0.75rem 1.5rem; font-size: 1.1rem;">
+                    <i class="fas fa-magnifying-glass me-2"></i>Tìm kiếm
+                </button>
+            </div>            
+        </div>
+    </form>
+    <!-- Khu vực Nhãn Dán Cộng Đồng -->
+    <div class="mt-4 pt-3" style="border-top: 1px dashed var(--public-border);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="fw-bold" style="color: var(--public-text);"><i class="fas fa-tags me-2"></i>Nhãn dán cộng đồng</span>
+                <span class="muted small ms-2">Có thể chọn nhiều nhãn cùng lúc (Lọc theo AND)</span>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <input type="text" id="customTagSearch" class="inline-input" placeholder="Tìm nhanh nhãn dán..." style="padding: 0.4rem 0.8rem; font-size: 0.85rem; width: 200px;" />
+                @if (Model.SelectedCustomTagIds.Any())
+                {
+                    <button type="button" class="btn-ghost" onclick="clearAllCustomTags()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--public-red); border-color: var(--public-red);">
+                        <i class="fas fa-times me-1"></i> Bỏ chọn tất cả
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- THIẾT KẾ GRID 2 HÀNG CÓ NÚT CUỘN -->
+        <div class="d-flex align-items-center gap-2 position-relative w-100">
+            <!-- Nút cuộn trái -->
+            <button type="button" class="btn-ghost d-flex align-items-center justify-content-center" id="scrollLeftBtn" style="padding: 0; width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+
+            <!-- Container Tags dùng CSS Grid -->
+            <div id="customTagList" style="display: grid; grid-template-rows: repeat(2, auto); grid-auto-flow: column; gap: 0.5rem; overflow-x: auto; scroll-behavior: smooth; flex-grow: 1; padding-bottom: 4px;">
+                @foreach (var tag in Model.CustomTags)
+                {
+                    var isActive = Model.SelectedCustomTagIds.Contains(tag.MaThe);
+                    <button type="button" class="custom-tag-btn js-tag-btn @(isActive ? "is-active" : "")"
+                            data-name="@tag.TenThe.ToLower()"
+                            onclick="toggleCustomTag(@tag.MaThe)" style="white-space: nowrap;">
+                        @tag.TenThe <span class="custom-tag-count">@tag.SoTruyen</span>
+                    </button>
+                }
+                @if (!Model.CustomTags.Any())
+                {
+                    <span class="muted small">Chưa có nhãn dán nào được tạo.</span>
+                }
+            </div>
+
+            <!-- Nút cuộn phải -->
+            <button type="button" class="btn-ghost d-flex align-items-center justify-content-center" id="scrollRightBtn" style="padding: 0; width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="result-toolbar">
+        <div>
+            <div class="section-kicker">Kết quả</div>
+            <h2 class="section-title">@Model.TotalItems truyện phù hợp</h2>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn-pill" type="button" id="infiniteToggle">
+                <i class="fas fa-angles-down me-1"></i> Tải thêm khi cuộn
+            </button>
+            <div class="btn-group">
+                <button class="btn-pill" type="button" data-view-mode="grid" title="4 truyện mỗi hàng">
+                    <i class="fas fa-table-cells-large"></i>
+                </button>
+                <button class="btn-pill" type="button" data-view-mode="list" title="1 truyện mỗi hàng">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="storyResults" class="story-results story-results--grid mt-4">
+        <partial name="_StoryResults" model="Model" />
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-4" id="pagerNav">
+            <ul class="pagination justify-content-center">
+                @for (var i = startPage; i <= endPage; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <!-- Sử dụng JS để đổi trang thay vì thẻ A thông thường -->
+                        <button class="page-link" type="button" onclick="goToPage(@i)">@i</button>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+
+    <div id="loadMoreSentinel" class="text-center muted py-3" data-page="@Model.Page" data-total="@Model.TotalPages">
+        @(Model.Infinite ? "Cuộn xuống để tải thêm truyện." : "")
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        // 1. Quản lý Nhãn dán (Bật/Tắt)
+        function toggleCustomTag(id) {
+            const container = document.getElementById('hiddenCustomTags');
+            const existingInput = container.querySelector(`input[value="${id}"]`);
+
+            if (existingInput) {
+                // Đã chọn -> click lần 2 là Tắt
+                existingInput.remove();
+            } else {
+                // Bật
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selectedCustomTagIds';
+                input.value = id;
+                container.appendChild(input);
+            }
+            // Reset page và Submit
+            submitFilter();
+        }
+
+        function clearAllCustomTags() {
+            document.getElementById('hiddenCustomTags').innerHTML = '';
+            submitFilter();
+        }
+
+        // Đổi trang
+        function goToPage(page) {
+            document.getElementById('pageInput').value = page;
+            document.getElementById('filterForm').submit();
+        }
+
+        // Submit filter (từ nút Search hoặc khi đổi Tag)
+        function submitFilter() {
+            // Khi lọc mới, ép page về 1
+            document.getElementById('pageInput').value = 1;
+            document.getElementById('filterForm').submit();
+        }
+
+        // Tìm kiếm nhãn trực quan
+        document.getElementById('customTagSearch').addEventListener('input', function(e) {
+            const val = e.target.value.toLowerCase();
+            document.querySelectorAll('.js-tag-btn').forEach(btn => {
+                if (btn.dataset.name.includes(val)) {
+                    btn.style.display = 'inline-flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+        });
+        // Xử lý sự kiện bấm nút cuộn Nhãn Dán Trái/Phải
+        const tagList = document.getElementById('customTagList');
+        document.getElementById('scrollLeftBtn').addEventListener('click', function() {
+            tagList.scrollBy({ left: -300, behavior: 'smooth' });
+        });
+        document.getElementById('scrollRightBtn').addEventListener('click', function() {
+            tagList.scrollBy({ left: 300, behavior: 'smooth' });
+        });
+        // 2. Logic Grid/List và Infinite Scroll
+        (() => {
+            const results = document.getElementById("storyResults");
+            const infiniteInput = document.getElementById("infiniteInput");
+            const infiniteToggle = document.getElementById("infiniteToggle");
+            const sentinel = document.getElementById("loadMoreSentinel");
+            const pager = document.getElementById("pagerNav");
+            let loading = false;
+
+            function setViewMode(mode) {
+                results.classList.toggle("story-results--grid", mode === "grid");
+                results.classList.toggle("story-results--list", mode === "list");
+                localStorage.setItem("hutechnovel-search-view", mode);
+                document.querySelectorAll("[data-view-mode]").forEach(btn => {
+                    btn.classList.toggle("is-active", btn.dataset.viewMode === mode);
+                });
+            }
+
+            function setInfinite(enabled) {
+                infiniteInput.value = enabled ? "true" : "false";
+                infiniteToggle.classList.toggle("is-active", enabled);
+                if (pager) pager.hidden = enabled;
+                sentinel.textContent = enabled ? "Cuộn xuống để tải thêm truyện." : "";
+            }
+
+            async function loadNextPage() {
+                if (loading || infiniteInput.value !== "true") return;
+                const current = Number(sentinel.dataset.page || "1");
+                const total = Number(sentinel.dataset.total || "1");
+                if (current >= total) {
+                    sentinel.textContent = "Đã tải hết danh sách.";
+                    return;
+                }
+
+                loading = true;
+                sentinel.textContent = "Đang tải thêm...";
+                
+                // Thu thập toàn bộ dữ liệu filter hiện tại để gắn vào URL fetch
+                const url = new URL(window.location.href);
+                const formData = new FormData(document.getElementById('filterForm'));
+                
+                // Build lại query string (bao gồm cả mảng selectedCustomTagIds)
+                for (let [key, value] of formData.entries()) {
+                    if (key !== 'page' && key !== 'partial' && key !== 'infinite') {
+                        url.searchParams.append(key, value);
+                    }
+                }
+                
+                url.searchParams.set("page", current + 1);
+                url.searchParams.set("partial", "true");
+                url.searchParams.set("infinite", "true");
+
+                try {
+                    const response = await fetch(url.toString(), { headers: { "X-Requested-With": "fetch" } });
+                    const html = await response.text();
+                    results.insertAdjacentHTML("beforeend", html);
+                    sentinel.dataset.page = String(current + 1);
+                    sentinel.textContent = current + 1 >= total ? "Đã tải hết danh sách." : "Cuộn xuống để tải thêm truyện.";
+                } catch (err) {
+                    sentinel.textContent = "Lỗi tải trang.";
+                }
+                loading = false;
+            }
+
+            setViewMode(localStorage.getItem("hutechnovel-search-view") || "grid");
+            setInfinite(infiniteInput.value === "true");
+
+            infiniteToggle.addEventListener("click", () => {
+                setInfinite(infiniteInput.value !== "true");
+                // Cập nhật lại form thay vì submit ngay để không load lại trang
+                // document.getElementById("filterForm").submit();
+            });
+            
+            document.querySelectorAll("[data-view-mode]").forEach(btn => {
+                btn.addEventListener("click", () => setViewMode(btn.dataset.viewMode));
+            });
+
+            const observer = new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting)) loadNextPage();
+            }, { rootMargin: "260px" });
+            observer.observe(sentinel);
+        })();
+    </script>
+}

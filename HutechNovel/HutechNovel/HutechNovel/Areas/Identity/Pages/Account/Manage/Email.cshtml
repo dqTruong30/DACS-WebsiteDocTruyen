@@ -1,0 +1,66 @@
+@page
+@model EmailModel
+@{
+    ViewData["Title"] = "Quản lý Email";
+    ViewData["ActivePage"] = ManageNavPages.Email;
+}
+
+<div class="manage-main__header">
+    <div>
+        <div class="section-kicker">Bảo mật tài khoản</div>
+        <h1 class="page-title">@ViewData["Title"]</h1>
+    </div>
+</div>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<section class="manage-card">
+    <form id="email-form" method="post" class="manage-form">
+        @* Chỉ hiển thị khung lỗi nếu thực sự có lỗi *@
+        @if (!ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="status-banner is-danger"></div>
+        }
+
+        <div class="mb-3">
+            <label class="auth-label d-flex justify-content-between align-items-center mb-2">
+                <span>Email hiện tại</span>
+                @if (Model.IsEmailConfirmed)
+                {
+                    <span class="status-chip" style="color: var(--public-green); border-color: var(--public-green); padding: 0.2rem 0.5rem; font-size: 0.8rem;">
+                        <i class="fas fa-check-circle me-1"></i> Đã xác thực
+                    </span>
+                }
+                else
+                {
+                    <span class="status-chip" style="color: #ffb020; border-color: #ffb020; padding: 0.2rem 0.5rem; font-size: 0.8rem;">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Chưa xác thực
+                    </span>
+                }
+            </label>
+            <div class="d-flex gap-2 align-items-stretch">
+                <input asp-for="Email" class="field" disabled style="opacity: 0.6; cursor: not-allowed; flex: 1;" />
+                @if (!Model.IsEmailConfirmed)
+                {
+                    <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="btn-ghost" style="white-space: nowrap; padding: 0.4rem 1rem;">
+                        <i class="fas fa-paper-plane me-1"></i> Gửi lại mã
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label asp-for="Input.NewEmail" class="auth-label mb-2">Email mới</label>
+            <input asp-for="Input.NewEmail" class="field" placeholder="Nhập địa chỉ email mới cần đổi..." />
+            <span asp-validation-for="Input.NewEmail" class="text-danger small mt-1 d-block"></span>
+        </div>
+
+        <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="btn-neon">
+            <i class="fas fa-save me-2"></i> Lưu thay đổi
+        </button>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

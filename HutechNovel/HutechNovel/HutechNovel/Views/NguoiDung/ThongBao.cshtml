@@ -1,0 +1,78 @@
+@model HutechNovel.Models.UserLibraryViewModel
+
+@{
+    ViewData["Title"] = "Thông báo của tôi";
+}
+
+<section class="panel mb-4">
+    <div class="section-kicker">Thông báo cá nhân</div>
+    <h1 class="page-title">Thông báo của tôi</h1>
+    <div class="page-tabs">
+        <span class="status-chip">Chương mới @Model.NewChapterStories.Count</span>
+        <span class="status-chip">Theo dõi @Model.FollowingStories.Count</span>
+    </div>
+</section>
+
+@if (Model.NewChapterStories.Any())
+{
+    <section class="follow-alert mb-4">
+        <div>
+            <strong>@Model.NewChapterStories.Count truyện bạn theo dõi vừa có chương mới.</strong>
+            <span>Bấm đọc chương mới để tiếp tục từ cập nhật mới nhất.</span>
+        </div>
+    </section>
+
+    <section class="follow-grid">
+        @foreach (var item in Model.NewChapterStories)
+        {
+            <article class="panel follow-card has-new-chapter">
+                <img class="follow-card__cover"
+                     src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                     alt="@item.Story.TieuDe"
+                     onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+
+                <div class="follow-card__body">
+                    <div class="follow-card__topline">
+                        <span class="new-chapter-badge"><i class="fas fa-bell me-1"></i>Có chương mới</span>
+                        @if (item.LastReadChapterNumber.HasValue)
+                        {
+                            <span class="muted">Bạn đã đọc tới chương @item.LastReadChapterNumber</span>
+                        }
+                    </div>
+
+                    <h2 class="follow-card__title">
+                        <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">@item.Story.TieuDe</a>
+                    </h2>
+
+                    @if (item.CurrentChapter != null)
+                    {
+                        <div class="follow-card__chapter">
+                            <span>Chương mới nhất</span>
+                            <a asp-controller="DocTruyen" asp-action="Index"
+                               asp-route-maTruyen="@item.Story.MaTruyen"
+                               asp-route-soChuong="@item.CurrentChapter.SoChuong">
+                                Chương @item.CurrentChapter.SoChuong: @item.CurrentChapter.TieuDe
+                            </a>
+                            <small>@item.CurrentChapter.NgayTao.ToString("dd/MM/yyyy HH:mm")</small>
+                        </div>
+                    }
+
+                    <div class="follow-card__actions">
+                        <a class="btn-neon" asp-controller="DocTruyen" asp-action="Index"
+                           asp-route-maTruyen="@item.Story.MaTruyen"
+                           asp-route-soChuong="@item.CurrentChapter?.SoChuong">
+                            Đọc chương mới
+                        </a>
+                        <a class="btn-ghost" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                    </div>
+                </div>
+            </article>
+        }
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="empty-box">Hiện chưa có chương mới từ các truyện bạn đang theo dõi.</div>
+    </section>
+}

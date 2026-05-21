@@ -1,0 +1,27 @@
+@{
+    if (ViewData.TryGetValue("ParentLayout", out var parentLayout))
+    {
+        Layout = (string)parentLayout;
+    }
+    else
+    {
+        Layout = "/Views/Shared/_Layout.cshtml";
+    }
+}
+
+<section class="manage-shell">
+    <div class="manage-grid">
+        <aside class="manage-sidebar">
+            <h2 class="manage-sidebar__title">Quản lý tài khoản</h2>
+            <partial name="_ManageNav" />
+        </aside>
+
+        <div class="manage-main">
+            @RenderBody()
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

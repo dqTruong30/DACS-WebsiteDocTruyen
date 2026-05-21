@@ -1,0 +1,131 @@
+@model HutechNovel.Models.ChapterManagementViewModel
+
+@{
+    string ChapterStatusText(TrangThaiChuong status) => status switch
+    {
+        TrangThaiChuong.BanNhap => "Bản nháp",
+        TrangThaiChuong.HenGio => "Hẹn giờ",
+        _ => "Đã đăng"
+    };
+    ViewData["Title"] = "Quản Lý Chương";
+}
+
+<section class="panel mb-4">
+    <div class="admin-actions justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <a asp-controller="QuanLyTruyen" asp-action="Index" class="btn-ghost" style="padding: 0.4rem 0.8rem; border-radius: 8px;" title="Quay lại Kho truyện">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <div class="section-kicker">Quản lý chương</div>
+                <h1 class="page-title" style="margin: 0;">@Model.Story.TieuDe</h1>
+            </div>
+        </div>
+        <a class="btn-admin" asp-action="ThemChuong" asp-route-maTruyen="@Model.Story.MaTruyen">
+            <i class="fas fa-plus"></i> Đăng chương mới
+        </a>
+    </div>
+</section>
+
+<section class="table-card">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th style="width: 10%;">Số chương</th>
+                <th style="width: 45%;">Tiêu đề</th>
+                <th style="width: 12%;">Trạng thái</th>
+                <th style="width: 18%;">Ngày tạo</th>
+                <th style="width: 25%; text-align: center;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var chapter in Model.Chapters)
+            {
+                <tr>
+                    <td>@chapter.SoChuong</td>
+                    <td>@chapter.TieuDe</td>
+                    <td>
+                        <span class="status-chip">@ChapterStatusText(chapter.TrangThai)</span>
+                        @if (chapter.TrangThai == TrangThaiChuong.HenGio && chapter.NgayHenGio.HasValue)
+                        {
+                            <div class="muted small mt-1">@chapter.NgayHenGio.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                        }
+                    </td>
+                    <td>@chapter.NgayTao.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a class="btn-action btn-view" asp-action="XemChuong" asp-route-id="@chapter.MaChuong" title="Xem chi tiết">
+                                Xem
+                            </a>
+
+                            <a class="btn-action btn-edit" asp-action="SuaChuong" asp-route-id="@chapter.MaChuong" title="Chỉnh sửa">
+                                Sửa
+                            </a>
+
+                            <button type="button" class="btn-action btn-delete" title="Xóa chương"
+                                    data-bs-toggle="modal" data-bs-target="#deleteChapterModal"
+                                    data-id="@chapter.MaChuong" data-title="Chương @chapter.SoChuong: @chapter.TieuDe">
+                                Xóa
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<div class="modal fade" id="deleteChapterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--public-surface); border: 1px solid var(--public-border); border-radius: var(--radius-lg); color: var(--public-text);">
+            
+            <div class="modal-body text-center py-5 px-4">
+                <div style="font-size: 4rem; line-height: 1; color: var(--public-red); margin-bottom: 1.5rem; text-shadow: 0 0 15px rgba(255, 61, 110, 0.4);">
+                    ⚠️
+                </div>
+                <h4 style="font-weight: 800; margin-bottom: 0.5rem;">Xóa chương này?</h4>
+                <strong id="deleteChapterTitle" style="font-size: 1.3rem; display: block; margin-bottom: 1rem;"></strong>
+                <p class="muted mb-4" style="font-size: 0.95rem;">
+                    Dữ liệu nội dung Raw và Convert của chương này sẽ bị xóa vĩnh viễn.
+                    <br />Hành động này <b>không thể hoàn tác!</b>
+                </p>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal" style="min-width: 120px;">Hủy bỏ</button>
+                    
+                    <form asp-action="XoaChuong" method="post" id="deleteChapterForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" id="deleteChapterId" value="" />
+                        <button type="submit" class="btn-neon" style="background: var(--public-red); border-color: var(--public-red); color: #fff; box-shadow: 0 8px 24px rgba(255, 61, 110, 0.25); min-width: 120px;">
+                            Xác nhận Xóa
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var deleteModal = document.getElementById('deleteChapterModal');
+            
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    
+                    var chapterId = button.getAttribute('data-id');
+                    var chapterTitle = button.getAttribute('data-title');
+                    
+                    var modalTitle = deleteModal.querySelector('#deleteChapterTitle');
+                    var hiddenInput = deleteModal.querySelector('#deleteChapterId');
+                    
+                    modalTitle.textContent = '"' + chapterTitle + '"';
+                    hiddenInput.value = chapterId;
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,858 @@
+@model HutechNovel.Models.ReadingViewModel
+
+@{
+    ViewData["Title"] = $"Chương {Model.Chapter.SoChuong}";
+    var displayContent = Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "";
+}
+
+<style>
+    /* Chuyển đổi màu sắc mượt mà bất chấp Theme hệ thống */
+    .reader-page {
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .reader-main-card {
+        transition: background-color 0.3s ease, color 0.3s ease;
+        border: none !important;
+        background-color: transparent !important;
+    }
+
+    .reader-heading h1, .reader-heading h2 {
+        color: inherit !important;
+    }
+
+    .reader-content-live p {
+        margin-bottom: var(--reader-paragraph-gap, 18px);
+        text-indent: 1.5rem; /* Thụt lề đầu dòng cho chuẩn phong cách truyện */
+        line-height: inherit;
+    }
+
+    .reader-sentence.is-current-paragraph {
+        border-left: 3px solid var(--public-green);
+        background: rgba(53, 255, 97, 0.08);
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+        padding-left: 0.35rem;
+    }
+
+    .reader-progress {
+        position: sticky;
+        top: 92px;
+        z-index: 80;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.55rem 0.85rem;
+        border: 1px solid var(--public-border);
+        border-radius: 8px;
+        background: var(--public-surface);
+        color: var(--public-text);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+        margin-bottom: 1rem;
+    }
+
+    .reader-progress__track {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: var(--public-surface-2);
+    }
+
+    .reader-progress__bar {
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--public-green);
+        transition: width 0.12s ease;
+    }
+
+    .reader-progress__label {
+        min-width: 48px;
+        color: var(--public-green);
+        font-size: 0.86rem;
+        font-weight: 800;
+        text-align: right;
+    }
+
+    .theme-public .reader-chapter-disabled,
+    .theme-public .btn-ghost.reader-chapter-disabled,
+    .theme-public .btn-neon.reader-chapter-disabled,
+    .reader-chapter-disabled {
+        opacity: 1 !important;
+        filter: grayscale(1);
+        cursor: not-allowed !important;
+        background: #8f8f8f !important;
+        border-color: #8f8f8f !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+        pointer-events: auto !important;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    }
+
+    .theme-public .reader-chapter-disabled:hover,
+    .theme-public .reader-chapter-disabled:focus,
+    .theme-public .reader-chapter-disabled:active,
+    .theme-public .btn-ghost.reader-chapter-disabled:hover,
+    .theme-public .btn-ghost.reader-chapter-disabled:focus,
+    .theme-public .btn-ghost.reader-chapter-disabled:active,
+    .theme-public .btn-neon.reader-chapter-disabled:hover,
+    .theme-public .btn-neon.reader-chapter-disabled:focus,
+    .theme-public .btn-neon.reader-chapter-disabled:active,
+    .reader-chapter-disabled:hover,
+    .reader-chapter-disabled:focus,
+    .reader-chapter-disabled:active {
+        background: #8f8f8f !important;
+        border-color: #8f8f8f !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .reader-chapter-disabled i,
+    .reader-chapter-disabled span {
+        color: #ffffff !important;
+        opacity: 1 !important;
+    }
+
+    @@media (max-width: 768px) {
+        .reader-progress {
+            top: 74px;
+        }
+    }
+    
+    /* Giao diện nút TTS trạng thái Tạm Dừng */
+    .btn-warning {
+        background: #ffb020 !important;
+        border-color: #ffb020 !important;
+        color: #111 !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 16px rgba(255, 176, 32, 0.4) !important;
+    }
+
+        .btn-warning:hover {
+            background: #e09900 !important;
+        }
+</style>
+
+<section class="reader-page" id="readerPage">
+    <div class="reader-card reader-main-card" id="readerCard">
+        <div class="reader-progress" aria-label="Tiến độ đọc">
+            <div class="reader-progress__track">
+                <div class="reader-progress__bar" id="readerProgressBar"></div>
+            </div>
+            <div class="reader-progress__label" id="readerProgressLabel">0%</div>
+        </div>
+
+        <header class="reader-heading">
+            <h1>@Model.Chapter.Truyen.TieuDe</h1>
+            <h2>Chương @Model.Chapter.SoChuong: @Model.Chapter.TieuDe</h2>
+        </header>
+
+        <nav class="reader-topbar">
+            <a class="btn-ghost @(Model.PreviousChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
+                   data-empty-chapter="@(!Model.PreviousChapterNumber.HasValue)"
+                   aria-disabled="@(!Model.PreviousChapterNumber.HasValue)"
+                   asp-controller="DocTruyen" asp-action="Index"
+                   asp-route-maTruyen="@Model.Chapter.MaTruyen"
+                   asp-route-soChuong="@Model.PreviousChapterNumber">
+                <i class="fas fa-chevron-left me-1"></i>Trước
+            </a>
+            <a class="btn-ghost" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@Model.Chapter.MaTruyen">Mục lục</a>
+            <a id="btnNextChapterTop" class="btn-neon @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
+                   data-empty-chapter="@(!Model.NextChapterNumber.HasValue)"
+                   aria-disabled="@(!Model.NextChapterNumber.HasValue)"
+                   asp-controller="DocTruyen" asp-action="Index"
+                   asp-route-maTruyen="@Model.Chapter.MaTruyen"
+                   asp-route-soChuong="@Model.NextChapterNumber">
+                Sau<i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </nav>
+
+        <article id="readingContent" class="reader-content reader-content-live">
+            <!-- Nội dung sẽ được render lại bởi JS để giữ xuống dòng và bọc đoạn TTS -->
+        </article>
+
+        <nav class="reader-topbar mt-5">
+            <a class="btn-ghost @(Model.PreviousChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
+                   data-empty-chapter="@(!Model.PreviousChapterNumber.HasValue)"
+                   aria-disabled="@(!Model.PreviousChapterNumber.HasValue)"
+                   asp-action="Index" asp-route-maTruyen="@Model.Chapter.MaTruyen" asp-route-soChuong="@Model.PreviousChapterNumber">
+                <i class="fas fa-chevron-left me-1"></i>Chương trước
+            </a>
+            <a id="btnNextChapterBottom" class="btn-neon @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
+                   data-empty-chapter="@(!Model.NextChapterNumber.HasValue)"
+                   aria-disabled="@(!Model.NextChapterNumber.HasValue)"
+                   asp-action="Index" asp-route-maTruyen="@Model.Chapter.MaTruyen" asp-route-soChuong="@Model.NextChapterNumber">
+                Chương sau<i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </nav>
+
+        <div class="reader-switches justify-content-center mt-4">
+            <button class="btn-pill" type="button" data-content-mode="raw">Bản gốc (Raw)</button>
+            <button class="btn-pill is-active" type="button" data-content-mode="converted">Bản convert</button>
+        </div>
+    </div>
+</section>
+
+<div class="reader-floating-tools">
+    <button class="reader-float-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#readerSettings" title="Cài đặt giao diện">
+        <i class="fas fa-gear"></i>
+    </button>
+    <button class="reader-float-btn reader-float-btn--accent" type="button" data-bs-toggle="offcanvas" data-bs-target="#ttsPanel" title="Text to speech">
+        <i class="fas fa-volume-high"></i>
+    </button>
+</div>
+
+<!-- PANEL CÀI ĐẶT GIAO DIỆN -->
+<div class="offcanvas offcanvas-end reader-offcanvas" tabindex="-1" id="readerSettings">
+    <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold">Cài đặt đọc truyện</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="setting-group">
+            <label>Bảng màu giao diện</label>
+            <div class="setting-swatches flex-wrap">
+                <button class="swatch" style="background:#ffffff" data-bg="#ffffff" data-text="#1a1a1a" title="Trắng"></button>
+                <button class="swatch" style="background:#f4ecd8" data-bg="#f4ecd8" data-text="#332b21" title="Giấy vàng"></button>
+                <button class="swatch" style="background:#1a1a1a" data-bg="#1a1a1a" data-text="#e7e2d8" title="Đen tuyền"></button>
+                <button class="swatch" style="background:#111b33" data-bg="#111b33" data-text="#9fb1d1" title="Xanh dương tối"></button>
+                <button class="swatch" style="background:#2f2338" data-bg="#2f2338" data-text="#e0d4e5" title="Tím tối"></button>
+                <button class="swatch" style="background:#2a3b2c" data-bg="#2a3b2c" data-text="#b4cfb6" title="Xanh lá tối"></button>
+            </div>
+        </div>
+
+        <div class="setting-group d-flex gap-4">
+            <div>
+                <label>Tự chọn màu nền</label>
+                <input type="color" id="customBg" class="reader-color-input d-block mt-1" value="#111111" />
+            </div>
+            <div>
+                <label>Tự chọn màu chữ</label>
+                <input type="color" id="customText" class="reader-color-input d-block mt-1" value="#f1f1f1" />
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Font chữ</label>
+            <select id="fontFamily" class="field-select">
+                <option value="'Palatino Linotype', 'Book Antiqua', Palatino, serif">Palatino (Chuẩn sách)</option>
+                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                <option value="'Inter', sans-serif">Inter (Hiện đại)</option>
+                <option value="Arial, sans-serif">Arial</option>
+            </select>
+        </div>
+
+        <div class="setting-group">
+            <label>Cỡ chữ: <span id="fontSizeValue" class="text-success fw-bold">22px</span></label>
+            <input type="range" id="fontSize" class="form-range" min="16" max="36" value="22" />
+        </div>
+
+        <div class="setting-group">
+            <label>Giãn dòng: <span id="lineHeightValue" class="text-success fw-bold">1.8</span></label>
+            <input type="range" id="lineHeight" class="form-range" min="1.2" max="2.6" step="0.1" value="1.8" />
+        </div>
+
+        <div class="setting-group">
+            <label>Khoảng cách đoạn: <span id="paragraphGapValue" class="text-success fw-bold">18px</span></label>
+            <input type="range" id="paragraphGap" class="form-range" min="8" max="40" value="18" />
+        </div>
+    </div>
+</div>
+
+<!-- PANEL TEXT TO SPEECH -->
+<div class="offcanvas offcanvas-end reader-offcanvas tts-offcanvas" tabindex="-1" id="ttsPanel">
+    <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold">Máy đọc truyện (TTS)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        
+        <div class="setting-group mb-3">
+            <label>Giọng đọc (Tự động cập nhật):</label>
+            <select id="ttsVoice" class="field-select" style="font-size: 0.9rem;"></select>
+        </div>
+
+        <div class="tts-controls d-flex align-items-center mb-3">
+            <button id="ttsPrev" class="btn-ghost" type="button" title="Lùi lại 1 đoạn" style="padding: 0.6rem 1rem;"><i class="fas fa-backward-step"></i></button>
+            <button id="ttsPlayPause" class="btn-neon flex-grow-1" type="button"><i class="fas fa-play me-1"></i>Đọc ngay</button>
+            <button id="ttsNext" class="btn-ghost" type="button" title="Tiến tới 1 đoạn" style="padding: 0.6rem 1rem;"><i class="fas fa-forward-step"></i></button>
+            <button id="ttsStop" class="btn-ghost" type="button" title="Dừng hẳn" style="padding: 0.6rem 1rem;"><i class="fas fa-stop"></i></button>
+        </div>
+
+        <div class="setting-group mb-3">
+            <label>Tốc độ đọc: <span id="ttsRateValue" class="text-success fw-bold">1.0</span></label>
+            <input type="range" id="ttsRate" class="form-range" min="0.5" max="2.0" step="0.1" value="1" />
+        </div>
+
+        <div class="d-flex gap-2 mb-3 align-items-center p-2 rounded" style="background: var(--public-surface-2); border: 1px solid var(--public-border);">
+            <label class="mb-0 fw-bold" style="white-space: nowrap;">Nhảy đến đoạn:</label>
+            <input type="number" id="ttsJumpInput" class="field text-center" style="width: 70px; padding: 0.3rem;" min="1" placeholder="VD: 5" />
+            <button id="ttsJumpBtn" class="btn-neon py-1 px-3">Đi</button>
+        </div>
+
+        <div id="ttsStatus" class="status-banner is-success">Đang chờ lệnh...</div>
+        <div id="sentenceList" class="sentence-list mt-3"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const content = document.getElementById("readingContent");
+            const page = document.getElementById("readerPage");
+            const readerCard = document.getElementById("readerCard");
+            const settingsKey = "hutechnovel-reader-settings";
+            const chapterId = @Model.Chapter.MaChuong;
+            const savedReadingPosition = @Json.Serialize(Model.SavedReadingPosition ?? "0");
+            const serverThemeJson = @Json.Serialize(Model.ReaderThemeJson ?? "");
+            const serverFont = @Json.Serialize(Model.ReaderFontFamily);
+            const serverFontSize = @Model.ReaderFontSize;
+            const progressBar = document.getElementById("readerProgressBar");
+            const progressLabel = document.getElementById("readerProgressLabel");
+            let hasRestoredReadingPosition = false;
+            let savePositionTimer = null;
+            let saveSettingsTimer = null;
+
+            document.querySelectorAll('[data-empty-chapter]').forEach(button => {
+                if (button.dataset.emptyChapter?.toLowerCase() !== "true") return;
+
+                button.addEventListener("click", event => {
+                    event.preventDefault();
+                    alert("Đã hết chương rồi");
+                });
+            });
+            
+            // Xử lý dữ liệu raw từ Server: Ép thẻ xuống dòng thành chuỗi text có ký tự \n
+            let rawStr = @Json.Serialize(Model.RawContent?.NoiDung ?? "");
+            let convStr = @Json.Serialize(Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "");
+            
+            // Hàm chuyển đổi nội dung thành HTML với cấu trúc chia đoạn <p>
+            function processTextToHTML(text) {
+                let cleanText = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<p>/gi, '');
+                let paragraphs = cleanText.split('\n').map(p => p.trim()).filter(p => p !== "");
+                return paragraphs;
+            }
+
+            let pRaw = processTextToHTML(rawStr);
+            let pConv = processTextToHTML(convStr);
+
+            // "ttsBlocks" chứa các ĐOẠN VĂN (Paragraph) nguyên vẹn để đọc 1 mạch
+            let ttsBlocks = [];
+            let currentIndex = 0;
+            let utterance = null;
+            let recenterTimer = null;
+            let voices = [];
+            
+            // Quản lý trạng thái TTS tùy chỉnh
+            let isPlayingState = false;
+            let isCancelling = false;
+            let resumeFixTimer = null;
+
+            // 1. CHUẨN BỊ NỘI DUNG VÀ TÁCH ĐOẠN ĐỂ TTS ĐỌC
+            function prepareBlocks() {
+                const rawBtn = document.querySelector('[data-content-mode="raw"]');
+                const rawMode = rawBtn ? rawBtn.classList.contains("is-active") : false;
+                const paragraphs = rawMode ? pRaw : pConv;
+                
+                ttsBlocks = [];
+                let globalIndex = 0;
+                
+                let htmlOutput = paragraphs.map(p => {
+                    let trimmed = p.trim();
+                    if (!trimmed) return "";
+                    
+                    ttsBlocks.push(trimmed);
+                    let span = `<span class="reader-sentence" id="block-${globalIndex}" data-index="${globalIndex}">${trimmed}</span>`;
+                    globalIndex++;
+                    
+                    return `<p>${span}</p>`;
+                }).join("");
+
+                content.innerHTML = htmlOutput;
+                renderBlockList();
+                restoreReadingPositionOnce();
+                
+                if (voices.length > 0) {
+                    populateVoices();
+                }
+            }
+
+            // In danh sách ra bên ngoài Panel TTS
+            function renderBlockList() {
+                const list = document.getElementById("sentenceList");
+                list.innerHTML = ttsBlocks.map((block, index) => {
+                    let preview = block.length > 90 ? block.substring(0, 90) + "..." : block;
+                    return `<button type="button" class="text-start" data-jump="${index}"><b>Đoạn ${index + 1}:</b> ${preview}</button>`;
+                }).join("");
+                
+                // Khi bấm vào đoạn chữ trong list -> Phát đọc ngay lập tức đoạn đó
+                list.querySelectorAll("[data-jump]").forEach(button => {
+                    button.addEventListener("click", () => {
+                        let targetIdx = Number(button.dataset.jump);
+                        speak(targetIdx);
+                    });
+                });
+            }
+
+            function readSavedPosition() {
+                if (!savedReadingPosition) return { scrollY: 0, paragraphIndex: 0 };
+                try {
+                    const parsed = JSON.parse(savedReadingPosition);
+                    return {
+                        scrollY: Number(parsed.scrollY || 0),
+                        paragraphIndex: Number(parsed.paragraphIndex || 0)
+                    };
+                } catch {
+                    return { scrollY: Number(savedReadingPosition || 0), paragraphIndex: 0 };
+                }
+            }
+
+            function restoreReadingPositionOnce() {
+                if (hasRestoredReadingPosition) return;
+                hasRestoredReadingPosition = true;
+
+                const position = readSavedPosition();
+                window.requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        if (position.scrollY > 0) {
+                            window.scrollTo({ top: position.scrollY, behavior: "auto" });
+                        } else if (position.paragraphIndex > 0) {
+                            scrollToBlock(position.paragraphIndex, true);
+                        }
+                        updateReadingProgress();
+                    }, 120);
+                });
+            }
+
+            function getCurrentParagraphIndex() {
+                const blocks = Array.from(document.querySelectorAll(".reader-sentence"));
+                if (!blocks.length) return 0;
+
+                let current = 0;
+                const marker = window.innerHeight * 0.36;
+                for (let i = 0; i < blocks.length; i++) {
+                    if (blocks[i].getBoundingClientRect().top <= marker) {
+                        current = i;
+                    } else {
+                        break;
+                    }
+                }
+                return current;
+            }
+
+            function markCurrentParagraph(index) {
+                document.querySelectorAll(".reader-sentence.is-current-paragraph").forEach(el => el.classList.remove("is-current-paragraph"));
+                document.getElementById(`block-${index}`)?.classList.add("is-current-paragraph");
+            }
+
+            function getReadingSnapshot() {
+                const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+                const scrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+                const progress = Math.min(100, Math.max(0, Math.round((scrollY / scrollable) * 100)));
+                const paragraphIndex = getCurrentParagraphIndex();
+                return { scrollY: Math.round(scrollY), progress, paragraphIndex };
+            }
+
+            function updateReadingProgress() {
+                const snapshot = getReadingSnapshot();
+                if (progressBar) progressBar.style.width = `${snapshot.progress}%`;
+                if (progressLabel) progressLabel.textContent = `${snapshot.progress}%`;
+                markCurrentParagraph(snapshot.paragraphIndex);
+                return snapshot;
+            }
+
+            async function saveReadingPositionNow(useBeacon = false) {
+                const snapshot = updateReadingProgress();
+                const form = new FormData();
+                form.append("maChuong", chapterId);
+                form.append("viTriDoc", JSON.stringify(snapshot));
+
+                if (useBeacon && navigator.sendBeacon) {
+                    navigator.sendBeacon("/api/TuongTac/LuuViTriDoc", form);
+                    return;
+                }
+
+                try {
+                    await fetch("/api/TuongTac/LuuViTriDoc", { method: "POST", body: form, keepalive: useBeacon });
+                } catch {
+                    // Khách chưa đăng nhập hoặc mất mạng thì chỉ bỏ qua, không làm gián đoạn việc đọc.
+                }
+            }
+
+            function scheduleSaveReadingPosition() {
+                updateReadingProgress();
+                clearTimeout(savePositionTimer);
+                savePositionTimer = setTimeout(() => saveReadingPositionNow(false), 1200);
+            }
+
+            // 2. TEXT TO SPEECH (TTS) VOICES LOGIC
+            function populateVoices() {
+                voices = window.speechSynthesis.getVoices();
+                if (!voices || voices.length === 0) return;
+
+                const voiceSelect = document.getElementById("ttsVoice");
+                if (!voiceSelect) return;
+                
+                voiceSelect.innerHTML = ''; // Xóa sạch danh sách cũ
+
+                let bestVi = null; let maxViScore = -1;
+                let bestZh = null; let maxZhScore = -1;
+
+                voices.forEach(voice => {
+                    const vLang = (voice.lang || "").toLowerCase();
+                    const vName = (voice.name || "").toLowerCase();
+
+                    // Chấm điểm tìm Vua Tiếng Việt (Đã fix lỗi bắt nhầm chữ)
+                    if (vLang.startsWith('vi') || vName.includes('vietnamese') || vName.includes('tiếng việt') || vName.includes('microsoft hoaimy') || vName.includes('microsoft an')) {
+                        let score = 1; // Điểm nền
+                        if (vName.includes('google')) score += 10;
+                        if (vName.includes('hoaimy') || vName.includes('microsoft an')) score += 9;
+                        if (vName.includes('linh') || vName.includes('quynh')) score += 8;
+                        if (voice.localService) score += 5;
+                        
+                        if (score > maxViScore) { maxViScore = score; bestVi = voice; }
+                    }
+
+                    // Chấm điểm tìm Vua Tiếng Trung
+                    if (vLang.startsWith('zh') || vName.includes('chinese') || vName.includes('xiaoxiao') || vName.includes('yunxi')) {
+                        let score = 1;
+                        if (vName.includes('google')) score += 10;
+                        if (vName.includes('xiaoxiao') || vName.includes('yunxi')) score += 9;
+                        if (voice.localService) score += 5;
+                        
+                        if (score > maxZhScore) { maxZhScore = score; bestZh = voice; }
+                    }
+                });
+
+                // Chỉ đưa đúng 2 giọng này vào giao diện cho gọn
+                if (bestVi) {
+                    let optVi = document.createElement('option');
+                    optVi.value = bestVi.name;
+                    optVi.textContent = `🇻🇳 Tiếng Việt (${bestVi.name})`;
+                    voiceSelect.appendChild(optVi);
+                }
+                
+                if (bestZh) {
+                    let optZh = document.createElement('option');
+                    optZh.value = bestZh.name;
+                    optZh.textContent = `🇨🇳 Tiếng Trung (${bestZh.name})`;
+                    voiceSelect.appendChild(optZh);
+                }
+
+                // Cảnh báo nếu thiết bị hoàn toàn không có Tiếng Việt/Trung
+                if (!bestVi && !bestZh) {
+                    let optFallback = document.createElement('option');
+                    optFallback.value = voices[0].name;
+                    optFallback.textContent = `Mặc định hệ thống (${voices[0].name})`;
+                    voiceSelect.appendChild(optFallback);
+                    console.warn("Máy tính/Điện thoại này chưa cài đặt gói ngôn ngữ Tiếng Việt hoặc Tiếng Trung.");
+                }
+
+                autoSelectVoice();
+            }
+
+            function autoSelectVoice() {
+                const voiceSelect = document.getElementById("ttsVoice");
+                if (!voiceSelect || voiceSelect.options.length === 0) return;
+
+                const rawBtn = document.querySelector('[data-content-mode="raw"]');
+                const rawMode = rawBtn ? rawBtn.classList.contains("is-active") : false;
+
+                let targetOpt = Array.from(voiceSelect.options).find(opt => {
+                    return rawMode ? opt.textContent.includes('Tiếng Trung') : opt.textContent.includes('Tiếng Việt');
+                });
+
+                if (targetOpt) {
+                    voiceSelect.value = targetOpt.value;
+                } else {
+                    voiceSelect.value = voiceSelect.options[0].value;
+                }
+                
+                if (typeof utterance !== 'undefined' && utterance) {
+                    utterance.lang = rawMode ? "zh-CN" : "vi-VN";
+                }
+            }
+            // Lắng nghe sự kiện load giọng đọc của trình duyệt
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateVoices;
+            }
+            
+            // Fallback quét giọng thủ công (Bảo hiểm cho Chrome)
+            let voiceRetryCount = 0;
+            let voiceInterval = setInterval(() => {
+                if (voices.length > 0 || voiceRetryCount > 10) {
+                    clearInterval(voiceInterval);
+                } else {
+                    populateVoices();
+                    voiceRetryCount++;
+                }
+            }, 500);
+            
+            function scrollToBlock(index, instant = false) {
+                const target = document.getElementById(`block-${index}`);
+                if (!target) return;
+                target.scrollIntoView({ behavior: instant ? "auto" : "smooth", block: "center" });
+            }
+
+            function highlightBlock(index) {
+                document.querySelectorAll(".reader-sentence.is-reading").forEach(el => el.classList.remove("is-reading"));
+                document.querySelectorAll(".sentence-list .is-reading").forEach(el => el.classList.remove("is-reading"));
+                
+                document.getElementById(`block-${index}`)?.classList.add("is-reading");
+                
+                let listBtn = document.querySelector(`[data-jump="${index}"]`);
+                if (listBtn) {
+                    listBtn.classList.add("is-reading");
+                    listBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }
+
+                clearTimeout(recenterTimer);
+                recenterTimer = setTimeout(() => scrollToBlock(index), 1500);
+            }
+
+            // 3. XỬ LÝ NÚT PLAY / PAUSE
+            const btnPlayPause = document.getElementById("ttsPlayPause");
+            
+            function updatePlayPauseUI(isPlaying) {
+                isPlayingState = isPlaying;
+                if (isPlaying) {
+                    btnPlayPause.innerHTML = '<i class="fas fa-pause me-1"></i>Tạm dừng';
+                    btnPlayPause.classList.remove("btn-neon");
+                    btnPlayPause.classList.add("btn-warning");
+                } else {
+                    btnPlayPause.innerHTML = '<i class="fas fa-play me-1"></i>Đọc tiếp';
+                    btnPlayPause.classList.remove("btn-warning");
+                    btnPlayPause.classList.add("btn-neon");
+                }
+            }
+
+            function cancelSpeech() {
+                isCancelling = true;
+                window.speechSynthesis.cancel();
+                if (resumeFixTimer) clearInterval(resumeFixTimer);
+            }
+
+            function speak(index) {
+                if (!("speechSynthesis" in window) || !ttsBlocks.length) return;
+                
+                cancelSpeech();
+                
+                setTimeout(() => {
+                    isCancelling = false;
+                    if (index < 0 || index >= ttsBlocks.length) return;
+                    currentIndex = index;
+                    
+                    utterance = new SpeechSynthesisUtterance(ttsBlocks[currentIndex]);
+                    window.speechUtteranceChunk = utterance;
+
+                    const rawBtn = document.querySelector('[data-content-mode="raw"]');
+                    const rawMode = rawBtn ? rawBtn.classList.contains("is-active") : false;
+                    utterance.lang = rawMode ? "zh-CN" : "vi-VN";
+
+                    const selectedVoiceName = document.getElementById("ttsVoice").value;
+                    const voice = voices.find(v => v.name === selectedVoiceName);
+                    if (voice) {
+                        utterance.voice = voice;
+                    }
+
+                    utterance.rate = Number(document.getElementById("ttsRate").value);
+                    
+                    utterance.onstart = () => {
+                        highlightBlock(currentIndex);
+                        document.getElementById("ttsStatus").textContent = `Đang đọc đoạn ${currentIndex + 1}/${ttsBlocks.length}`;
+                        document.getElementById("ttsStatus").className = "status-banner is-success";
+                        
+                        if (resumeFixTimer) clearInterval(resumeFixTimer);
+                        resumeFixTimer = setInterval(() => {
+                            if (window.speechSynthesis.speaking && isPlayingState) {
+                                window.speechSynthesis.pause();
+                                window.speechSynthesis.resume();
+                            }
+                        }, 14000);
+                    };
+                    
+                    utterance.onend = () => {
+                        if (isCancelling) return;
+                        
+                        if (resumeFixTimer) clearInterval(resumeFixTimer);
+                        currentIndex += 1;
+                        
+                        if (currentIndex < ttsBlocks.length) {
+                            speak(currentIndex);
+                        } else {
+                            const nextBtn = document.getElementById("btnNextChapterBottom");
+                            if (nextBtn && !nextBtn.classList.contains("disabled")) {
+                                document.getElementById("ttsStatus").textContent = "Chuyển sang chương tiếp theo...";
+                                window.location.href = nextBtn.href;
+                            } else {
+                                alert("Bạn đã đọc tới chương cuối cùng hiện có của quyển sách này!");
+                                document.getElementById("ttsStatus").textContent = "Đã hoàn thành quyển sách.";
+                                document.getElementById("ttsStatus").className = "status-banner is-warning";
+                                updatePlayPauseUI(false);
+                                currentIndex = 0;
+                            }
+                        }
+                    };
+
+                    utterance.onerror = (e) => {
+                        if (isCancelling) return;
+                        if (resumeFixTimer) clearInterval(resumeFixTimer);
+                    };
+
+                    window.speechSynthesis.speak(utterance);
+                    updatePlayPauseUI(true);
+                }, 50);
+            }
+
+            btnPlayPause.addEventListener("click", () => {
+                if (isPlayingState) {
+                    cancelSpeech();
+                    updatePlayPauseUI(false);
+                    document.getElementById("ttsStatus").textContent = "Đã tạm dừng. Bấm 'Đọc tiếp' để phát lại đoạn này.";
+                } else {
+                    speak(currentIndex);
+                }
+            });
+
+            document.getElementById("ttsStop").addEventListener("click", () => {
+                cancelSpeech();
+                currentIndex = 0;
+                updatePlayPauseUI(false);
+                document.getElementById("ttsStatus").textContent = "Đã dừng. Sẵn sàng đọc lại từ đầu.";
+                document.querySelectorAll(".reader-sentence.is-reading, .sentence-list .is-reading").forEach(el => el.classList.remove("is-reading"));
+            });
+
+            document.getElementById("ttsPrev").addEventListener("click", () => {
+                if (currentIndex > 0) speak(currentIndex - 1);
+            });
+
+            document.getElementById("ttsNext").addEventListener("click", () => {
+                if (currentIndex < ttsBlocks.length - 1) speak(currentIndex + 1);
+            });
+
+            document.getElementById("ttsJumpBtn").addEventListener("click", () => {
+                let val = parseInt(document.getElementById("ttsJumpInput").value);
+                if (!isNaN(val) && val >= 1 && val <= ttsBlocks.length) {
+                    speak(val - 1);
+                } else {
+                    alert(`Vui lòng nhập số đoạn hợp lệ từ 1 đến ${ttsBlocks.length}`);
+                }
+            });
+
+            window.addEventListener("beforeunload", () => {
+                cancelSpeech();
+            });
+
+            // 4. QUẢN LÝ GIAO DIỆN (THEMING)
+            function parseServerReaderTheme() {
+                if (!serverThemeJson) return {};
+                try {
+                    return JSON.parse(serverThemeJson);
+                } catch {
+                    return {};
+                }
+            }
+
+            function defaultReaderSettings() {
+                return {
+                    bg: "#111111",
+                    text: "#f1f1f1",
+                    font: serverFont || "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+                    fontSize: serverFontSize || 22,
+                    lineHeight: 1.8,
+                    paragraphGap: 18,
+                    ...parseServerReaderTheme()
+                };
+            }
+
+            function applySettings(settings) {
+                page.style.backgroundColor = settings.bg;
+                page.style.color = settings.text;
+                readerCard.style.color = settings.text;
+                content.style.color = settings.text;
+                
+                content.style.fontFamily = settings.font;
+                content.style.fontSize = `${settings.fontSize}px`;
+                content.style.lineHeight = settings.lineHeight;
+                content.style.setProperty("--reader-paragraph-gap", `${settings.paragraphGap}px`);
+
+                document.getElementById("fontFamily").value = settings.font;
+                document.getElementById("fontSize").value = settings.fontSize;
+                document.getElementById("fontSizeValue").textContent = `${settings.fontSize}px`;
+                document.getElementById("lineHeight").value = settings.lineHeight;
+                document.getElementById("lineHeightValue").textContent = settings.lineHeight;
+                document.getElementById("paragraphGap").value = settings.paragraphGap;
+                document.getElementById("paragraphGapValue").textContent = `${settings.paragraphGap}px`;
+                document.getElementById("customBg").value = settings.bg;
+                document.getElementById("customText").value = settings.text;
+            }
+
+            async function saveReaderSettingsToAccount(settings) {
+                const form = new FormData();
+                form.append("bg", settings.bg);
+                form.append("text", settings.text);
+                form.append("font", settings.font);
+                form.append("fontSize", settings.fontSize);
+                form.append("lineHeight", settings.lineHeight);
+                form.append("paragraphGap", settings.paragraphGap);
+
+                try {
+                    await fetch("/api/TuongTac/LuuCaiDatDoc", { method: "POST", body: form });
+                } catch {
+                    // Nếu chưa đăng nhập thì localStorage vẫn giữ cài đặt trên máy hiện tại.
+                }
+            }
+
+            function scheduleSaveReaderSettings(settings) {
+                clearTimeout(saveSettingsTimer);
+                saveSettingsTimer = setTimeout(() => saveReaderSettingsToAccount(settings), 650);
+            }
+
+            function saveSettings(patch) {
+                const current = JSON.parse(localStorage.getItem(settingsKey) || "{}");
+                const next = {
+                    ...defaultReaderSettings(),
+                    ...current,
+                    ...patch
+                };
+                localStorage.setItem(settingsKey, JSON.stringify(next));
+                applySettings(next);
+                scheduleSaveReaderSettings(next);
+            }
+
+            document.querySelectorAll("[data-bg]").forEach(button => {
+                button.addEventListener("click", () => saveSettings({ bg: button.dataset.bg, text: button.dataset.text }));
+            });
+            document.getElementById("customBg").addEventListener("input", e => saveSettings({ bg: e.target.value }));
+            document.getElementById("customText").addEventListener("input", e => saveSettings({ text: e.target.value }));
+            document.getElementById("fontFamily").addEventListener("change", e => saveSettings({ font: e.target.value }));
+            document.getElementById("fontSize").addEventListener("input", e => saveSettings({ fontSize: Number(e.target.value) }));
+            document.getElementById("lineHeight").addEventListener("input", e => saveSettings({ lineHeight: Number(e.target.value) }));
+            document.getElementById("paragraphGap").addEventListener("input", e => saveSettings({ paragraphGap: Number(e.target.value) }));
+            document.getElementById("ttsRate").addEventListener("input", e => document.getElementById("ttsRateValue").textContent = Number(e.target.value).toFixed(1));
+
+            // Switch chế độ Raw/Convert
+            document.querySelectorAll("[data-content-mode]").forEach(button => {
+                button.addEventListener("click", () => {
+                    document.querySelectorAll("[data-content-mode]").forEach(btn => btn.classList.remove("is-active"));
+                    button.classList.add("is-active");
+                    cancelSpeech();
+                    updatePlayPauseUI(false);
+                    prepareBlocks();
+                    populateVoices();
+                });
+            });
+
+            // Khởi động
+            saveSettings(JSON.parse(localStorage.getItem(settingsKey) || "{}"));
+            prepareBlocks();
+            populateVoices();
+            window.addEventListener("scroll", scheduleSaveReadingPosition, { passive: true });
+            window.addEventListener("resize", scheduleSaveReadingPosition);
+            window.addEventListener("beforeunload", () => saveReadingPositionNow(true));
+        })();
+    </script>
+}

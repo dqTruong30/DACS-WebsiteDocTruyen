@@ -1,0 +1,200 @@
+@model HutechNovel.Models.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Terminal Analytics";
+}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<section class="panel mb-4" style="border-left: 4px solid var(--admin-green);">
+    <div class="section-kicker">He thong phan tich</div>
+    <h1 class="page-title text-uppercase" style="margin:0; text-shadow: 0 0 10px rgba(53, 210, 120, 0.3);">Terminal Analytics</h1>
+</section>
+
+<section class="stats-grid-4 mb-4">
+    <div class="stats-card">
+        <div class="muted">Nguoi dung</div>
+        <strong>@Model.TotalUsers</strong>
+        <div class="mini-note">+@Model.NewUsersToday hom nay</div>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Truyen</div>
+        <strong>@Model.TotalStories</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Bao cao cho xu ly</div>
+        <strong>@Model.ReportedCommentsCount</strong>
+    </div>
+    <div class="stats-card">
+        <div class="muted">Nhap / hen gio</div>
+        <strong>@Model.PendingChapters</strong>
+    </div>
+</section>
+
+<section class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="panel h-100">
+            <h2 class="section-title mb-3">Luu luong truy cap 7 ngay</h2>
+            <div style="height: 280px;">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel h-100">
+            <h2 class="section-title mb-3">Tang truong nguoi dung</h2>
+            <div style="height: 280px;">
+                <canvas id="userGrowthChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="panel h-100">
+            <h2 class="section-title mb-3">Hang cho bao cao vi pham</h2>
+            @if (Model.ReportedComments.Any())
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var comment in Model.ReportedComments)
+                    {
+                        <div style="border:1px solid var(--admin-border); border-radius:10px; padding:0.85rem;">
+                            <div class="d-flex justify-content-between gap-3">
+                                <strong>@comment.Truyen.TieuDe</strong>
+                                <span class="status-chip">@comment.SoBaoCao bao cao</span>
+                            </div>
+                            <div class="muted small mb-2">@comment.NguoiDung?.UserName - @comment.NgayTao.ToString("dd/MM/yyyy HH:mm")</div>
+                            <div>@comment.NoiDung</div>
+                            <a class="btn-ghost mt-2 d-inline-block" asp-area="" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@comment.MaTruyen">Mo truyen</a>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-box">Chua co binh luan bi bao cao.</div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel h-100">
+            <h2 class="section-title mb-3">Nhat ky hanh dong Admin</h2>
+            @if (Model.ActionLogs.Any())
+            {
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var log in Model.ActionLogs)
+                    {
+                        <div class="d-flex justify-content-between gap-3" style="border-bottom:1px dashed var(--admin-border); padding-bottom:.65rem;">
+                            <div>
+                                <strong>@log.HanhDong</strong>
+                                <div class="muted small">@log.NoiDung</div>
+                            </div>
+                            <span class="muted">@log.NgayTao.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-box">Chua co nhat ky hanh dong.</div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="row g-4 mb-4">
+    @{
+        var hotGroups = new[]
+        {
+            new { Title = "Hot hom nay", Items = Model.HotStoriesToday },
+            new { Title = "Hot 7 ngay", Items = Model.HotStoriesWeek },
+            new { Title = "Hot 30 ngay", Items = Model.HotStoriesMonth }
+        };
+    }
+    @foreach (var group in hotGroups)
+    {
+        <div class="col-lg-4">
+            <div class="table-card h-100 p-3">
+                <h2 class="section-title mb-3" style="font-size:1.25rem;">@group.Title</h2>
+                @if (group.Items.Any())
+                {
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var item in group.Items)
+                        {
+                            <div class="d-flex justify-content-between gap-3" style="border-bottom:1px dashed var(--admin-border); padding-bottom:.65rem;">
+                                <a asp-area="" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">@item.Story.TieuDe</a>
+                                <span class="muted">@item.Views</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="muted">Chua co luot doc.</div>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@section Scripts {
+    <script>
+        const labels = @Html.Raw(Json.Serialize(Model.ChartLabels));
+        const dataViews = @Html.Raw(Json.Serialize(Model.ChartViewsData));
+        const dataUsers = @Html.Raw(Json.Serialize(Model.ChartNewUsersData));
+
+        Chart.defaults.color = '#9fb1d1';
+        Chart.defaults.font.family = 'Inter';
+
+        new Chart(document.getElementById('trafficChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Luot xem',
+                    data: dataViews,
+                    borderColor: '#35d278',
+                    backgroundColor: 'rgba(53, 210, 120, 0.1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#111b33',
+                    pointBorderColor: '#35d278',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('userGrowthChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Nguoi dung moi',
+                    data: dataUsers,
+                    backgroundColor: 'rgba(88, 166, 255, 0.35)',
+                    borderColor: '#58a6ff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+}

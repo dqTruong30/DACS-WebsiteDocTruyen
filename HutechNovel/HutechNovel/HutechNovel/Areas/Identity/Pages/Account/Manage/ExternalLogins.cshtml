@@ -1,0 +1,77 @@
+﻿@page
+@model ExternalLoginsModel
+@{
+    ViewData["Title"] = "Liên kết tài khoản ngoài";
+    ViewData["ActivePage"] = ManageNavPages.ExternalLogins;
+}
+
+<div class="manage-main__header">
+    <div>
+        <div class="section-kicker">Kết nối đa nền tảng</div>
+        <h1 class="page-title">@ViewData["Title"]</h1>
+    </div>
+</div>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<section class="manage-card">
+    @if (Model.CurrentLogins?.Count > 0)
+    {
+        <h3 class="section-title mb-4">Tài khoản đã liên kết</h3>
+        <div class="d-flex flex-column gap-3 mb-5">
+            @foreach (var login in Model.CurrentLogins)
+            {
+                <div class="d-flex justify-content-between align-items-center p-3" style="border: 1px solid var(--public-border); border-radius: 12px; background: var(--public-surface-2);">
+                    <div class="d-flex align-items-center gap-3">
+                        @if (login.ProviderDisplayName == "Google")
+                        {
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width: 24px; height: 24px;" />
+                        }
+                        else
+                        {
+                            <i class="fas fa-link text-muted" style="font-size: 1.2rem;"></i>
+                        }
+                        <strong style="font-size: 1.1rem; color: var(--public-text);">@login.ProviderDisplayName</strong>
+                    </div>
+                    <div>
+                        @if (Model.ShowRemoveButton)
+                        {
+                            <form id="@($"remove-login-{login.LoginProvider}")" asp-page-handler="RemoveLogin" method="post" class="m-0">
+                                <input asp-for="@login.LoginProvider" name="LoginProvider" type="hidden" />
+                                <input asp-for="@login.ProviderKey" name="ProviderKey" type="hidden" />
+                                <button type="submit" class="btn-ghost" style="color: var(--public-red); border-color: var(--public-red); padding: 0.4rem 0.8rem; font-size: 0.9rem;" title="Gỡ bỏ liên kết @login.ProviderDisplayName">
+                                    <i class="fas fa-unlink me-1"></i> Gỡ liên kết
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.OtherLogins?.Count > 0)
+    {
+        <h3 class="section-title mb-3">Thêm liên kết mới</h3>
+        <p class="manage-helper mb-4">Kết nối thêm các tài khoản mạng xã hội để đăng nhập nhanh chóng hơn.</p>
+        
+        <form id="link-login-form" asp-page-handler="LinkLogin" method="post" class="form-horizontal">
+            <div class="external-providers" style="max-width: 320px;">
+                @foreach (var provider in Model.OtherLogins)
+                {
+                    <button id="@($"link-login-button-{provider.Name}")" type="submit" class="btn-external btn-@(provider.Name.ToLower())" name="provider" value="@provider.Name" title="Liên kết với @provider.DisplayName">
+                        @if (provider.Name == "Google")
+                        {
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo" />
+                        }
+                        <span>Kết nối với @provider.DisplayName</span>
+                    </button>
+                }
+            </div>
+        </form>
+    }
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

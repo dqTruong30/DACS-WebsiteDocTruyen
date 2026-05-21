@@ -1,0 +1,123 @@
+@model HutechNovel.Models.RankingViewModel
+
+@{
+    ViewData["Title"] = "Bảng Xếp Hạng";
+
+    // Khởi tạo Tiêu đề, Màu sắc và Theme tương ứng dựa vào Tab đang chọn
+    string title = Model.CurrentType switch
+    {
+        "trending" => "🔥 Bảng Xếp Hạng Thịnh Hành",
+        "boost" => "🚀 Bảng Xếp Hạng Đẩy Sách",
+        "rating" => "⭐ Bảng Xếp Hạng Đánh Giá",
+        _ => "👁 Bảng Xếp Hạng Lượt Đọc"
+    };
+
+    string colorClass = Model.CurrentType switch
+    {
+        "trending" => "ranking-card--purple",
+        "boost" => "ranking-card--red",
+        _ => "ranking-card--green"
+    };
+
+    string textAccentClass = Model.CurrentType switch
+    {
+        "trending" => "color: var(--public-pink);",
+        "boost" => "color: var(--public-red);",
+        _ => "color: var(--public-green);"
+    };
+}
+
+<section class="panel mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <div class="section-kicker">🏆 Bảng Xếp Hạng</div>
+            <h1 class="page-title text-uppercase" style="margin:0;">Top 20 truyện nổi bật nhất</h1>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn-pill @(Model.CurrentType == "trending" ? "is-active" : "")"
+               asp-action="Index" asp-route-type="trending">Thịnh hành</a>
+            <a class="btn-pill @(Model.CurrentType == "view" ? "is-active" : "")"
+               asp-action="Index" asp-route-type="view">Lượt đọc</a>
+            <a class="btn-pill @(Model.CurrentType == "boost" ? "is-active" : "")"
+               asp-action="Index" asp-route-type="boost">Đẩy sách</a>
+            <a class="btn-pill @(Model.CurrentType == "rating" ? "is-active" : "")"
+               asp-action="Index" asp-route-type="rating">Đánh giá</a>
+        </div>
+    </div>
+</section>
+
+<!-- Bảng hiển thị 1 danh sách dọc duy nhất -->
+<section class="panel ranking-card @colorClass">
+    <h2 class="section-title mb-4 pb-3" style="border-bottom: 1px dashed var(--public-border);">@title</h2>
+    
+    <ul class="rank-list">
+        @for (int i = 0; i < Model.Stories.Count; i++)
+        {
+            var story = Model.Stories[i];
+            
+            <!-- Ghi đè inline grid-template-columns để hiển thị mỗi truyện 1 dòng đầy đủ thông tin -->
+            <li class="rank-item" style="grid-template-columns: 40px 75px 1fr auto; align-items: center; padding: 1.2rem 0;">
+                
+                <!-- Cột 1: Thứ hạng -->
+                <div class="rank-number text-center" style="@textAccentClass @(i >= 3 ? "color: var(--public-muted); font-size: 1.5rem;" : "")">
+                    @(i + 1)
+                </div>
+                
+                <!-- Cột 2: Ảnh bìa -->
+                <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen" class="d-block">
+                    <img src="@(string.IsNullOrWhiteSpace(story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : story.AnhBia)"
+                         alt="@story.TieuDe"
+                         style="width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px; border: 1px solid var(--public-border);"
+                         onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                </a>
+
+                <!-- Cột 3: Tóm tắt thông tin -->
+                <div style="min-width: 0; padding-left: 10px;">
+                    <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen"
+                           class="d-block fw-bold text-truncate mb-1" style="color: var(--public-text); font-size: 1.25rem;">
+                        @story.TieuDe
+                    </a>
+                    <div class="muted small mb-2">
+                        <i class="fas fa-pen-nib me-1"></i>@(story.TacGia?.TenTacGia ?? "Đang cập nhật")
+                    </div>
+                    <div class="muted small text-truncate" style="max-width: 95%;">@story.MoTa</div>
+                </div>
+
+                <!-- Cột 4: Thống kê dựa theo Tab đang chọn -->
+                <div class="text-end">
+                    @if (Model.CurrentType == "trending")
+                    {
+                        <span class="status-chip" style="border-color: var(--public-pink); color: var(--public-pink); background: rgba(217, 45, 255, 0.1);">
+                            @story.DiemTrending.ToString("0") điểm
+                        </span>
+                    }
+                    else if (Model.CurrentType == "boost")
+                    {
+                        <span class="status-chip" style="border-color: var(--public-red); color: var(--public-red); background: rgba(255, 61, 110, 0.1);">
+                            @story.DayTruyens.Count vé đẩy
+                        </span>
+                    }
+                    else if (Model.CurrentType == "rating")
+                    {
+                        <span class="status-chip" style="border-color: var(--public-green); color: var(--public-green); background: rgba(53, 255, 97, 0.1);">
+                            @story.DiemDanhGiaTrungBinh.ToString("0.0") <i class="fas fa-star ms-1"></i>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="status-chip" style="border-color: var(--public-green); color: var(--public-green); background: rgba(53, 255, 97, 0.1);">
+                            @story.TongLuotXem lượt đọc
+                        </span>
+                    }
+                </div>
+                
+            </li>
+        }
+
+        @if (!Model.Stories.Any())
+        {
+            <li class="empty-box mt-3" style="min-height: 160px;">Chưa có dữ liệu cho bảng xếp hạng này.</li>
+        }
+    </ul>
+</section>

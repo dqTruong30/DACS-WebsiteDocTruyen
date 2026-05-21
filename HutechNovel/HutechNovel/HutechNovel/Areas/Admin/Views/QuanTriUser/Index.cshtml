@@ -1,0 +1,158 @@
+@model HutechNovel.Models.UserAdminViewModel
+
+@{
+    ViewData["Title"] = "Quản Lý Người Dùng";
+}
+
+<section class="panel mb-4">
+    <div class="d-flex align-items-center gap-3">
+        
+        <div>
+            <div class="section-kicker">Quản trị viên</div>
+            <h1 class="page-title text-uppercase" style="margin:0;">Quản Lý Người Dùng</h1>
+        </div>
+    </div>
+    
+    <div class="admin-toolbar mt-4">
+        <input id="liveSearchUser" class="inline-input w-100" type="text" placeholder="Tìm tên hoặc email..." autocomplete="off" />
+        
+        <select id="roleFilter" class="inline-select" style="min-width: 180px;">
+            <option value="">Tất cả vai trò</option>
+            <option value="user">User</option>
+            <option value="uploader">Uploader</option>
+            <option value="admin">Admin</option>
+        </select>
+    </div>
+    
+    <div class="mt-3 muted">Đang hiển thị: <strong id="userCount" style="color: var(--public-text);">@Model.Users.Count</strong> người dùng</div>
+</section>
+
+<section class="table-card cyber-table-container">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Người dùng</th>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Users)
+            {
+                <tr class="searchable-user">
+                    <td class="user-name"><strong>@(!string.IsNullOrWhiteSpace(item.User.HoTen) ? item.User.HoTen : item.User.UserName)</strong></td>
+                    <td class="user-email">@item.User.Email</td>
+                    <td class="user-roles">
+                        @foreach (var role in item.Roles)
+                        {
+                            <span class="role-chip me-2" style="border-color:#ffb020;color:#ffb020;">@role</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.User.LockoutEnd.HasValue && item.User.LockoutEnd > DateTimeOffset.Now)
+                        {
+                            <span class="status-chip" style="color: var(--admin-red); border-color: var(--admin-red);">Banned</span>
+                        }
+                        else
+                        {
+                            <span class="status-chip" style="color: var(--admin-green); border-color: var(--admin-green);">Active</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.Roles.Contains("Admin"))
+                        {
+                            <span class="muted">Quyền cao nhất</span>
+                        }
+                        else
+                        {
+                        <div class="d-flex gap-2">
+                            @if (!item.Roles.Contains("Uploader"))
+                            {
+                                <form asp-area="Admin" asp-controller="QuanTriUser" asp-action="CapQuyenUploader" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@item.User.Id" />
+                                    <button class="btn-admin-alt" type="submit" title="Cấp quyền đăng truyện">
+                                        <i class="fas fa-user-plus"></i> Uploader
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-area="Admin" asp-controller="QuanTriUser" asp-action="ThuHoiQuyenUploader" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn THU HỒI quyền đăng truyện của người này? Toàn bộ truyện họ đã đăng vẫn sẽ tồn tại nhưng họ không thể đăng mới.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@item.User.Id" />
+                                    <button class="btn-cyber-danger" type="submit" style="padding: 0.5rem 0.8rem; border-radius: 8px;" title="Thu hồi quyền Uploader">
+                                        <i class="fas fa-user-minus"></i> Thu hồi
+                                    </button>
+                                </form>
+                            }
+
+                            <form asp-area="Admin" asp-controller="QuanTriUser" asp-action="ToggleLockUser" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@item.User.Id" />
+                                @if (item.User.LockoutEnd.HasValue && item.User.LockoutEnd > DateTimeOffset.Now)
+                                {
+                                    <button class="btn-admin-alt" style="background: transparent; color: var(--admin-green); border-color: var(--admin-green);" type="submit">Unban</button>
+                                }
+                                else
+                                {
+                                    <button class="btn-admin-alt" style="background: var(--admin-red); border-color: var(--admin-red);" type="submit">Ban</button>
+                                }
+                            </form>
+                        </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('liveSearchUser');
+            const roleFilter = document.getElementById('roleFilter');
+            const rows = document.querySelectorAll('.searchable-user');
+            const countDisplay = document.getElementById('userCount');
+
+            // Hàm thực hiện lọc dữ liệu
+            function filterUsers() {
+                const keyword = searchInput.value.toLowerCase().trim();
+                const selectedRole = roleFilter.value.toLowerCase();
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const name = row.querySelector('.user-name').innerText.toLowerCase();
+                    const email = row.querySelector('.user-email').innerText.toLowerCase();
+                    const roles = row.querySelector('.user-roles').innerText.toLowerCase();
+
+                    // Kiểm tra xem text có chứa từ khóa không
+                    const matchesKeyword = name.includes(keyword) || email.includes(keyword);
+                    // Kiểm tra xem role có khớp với dropdown không (nếu value rỗng -> coi như luôn đúng)
+                    const matchesRole = selectedRole === "" || roles.includes(selectedRole);
+
+                    if (matchesKeyword && matchesRole) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // Cập nhật lại số lượng hiển thị
+                countDisplay.textContent = visibleCount;
+            }
+
+            // Gắn sự kiện: Gõ phím vào ô search hoặc chọn lại Dropdown đều kích hoạt lọc
+            if (searchInput) {
+                searchInput.addEventListener('input', filterUsers);
+            }
+            if (roleFilter) {
+                roleFilter.addEventListener('change', filterUsers);
+            }
+        });
+    </script>
+}

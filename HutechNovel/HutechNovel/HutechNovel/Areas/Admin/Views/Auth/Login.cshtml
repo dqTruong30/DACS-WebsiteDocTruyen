@@ -1,0 +1,35 @@
+﻿@{
+    ViewData["Title"] = "Cổng An Ninh Admin";
+    // Ép dùng Layout Public để người chưa đăng nhập không thấy thanh Menu của Admin
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<section class="auth-shell">
+    <div class="auth-card" style="border-color: var(--admin-green);">
+        <div class="text-center mb-4">
+            <h2 style="color: var(--admin-green); text-transform: uppercase; letter-spacing: 2px; font-weight: 800;">Terminal Access</h2>
+            <div class="mini-note">Cổng đăng nhập dành riêng cho Quản trị viên</div>
+        </div>
+
+        <form method="post" asp-area="Admin" asp-controller="Auth" asp-action="Login" class="auth-form">
+            @Html.AntiForgeryToken()
+            
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="status-banner is-danger text-center">@TempData["ErrorMessage"]</div>
+            }
+
+            <div>
+                <label class="auth-label">Key ID (Email hoặc Username)</label>
+                <input type="text" name="username" class="field" autocomplete="off" required placeholder="Nhập Key ID..." />
+            </div>
+
+            <div>
+                <label class="auth-label">Passcode (Mật khẩu)</label>
+                <input type="password" name="password" class="field" required placeholder="********" />
+            </div>
+
+            <button type="submit" class="btn-admin w-100 mt-2">Initialize / Đăng Nhập</button>
+        </form>
+    </div>
+</section>

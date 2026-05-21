@@ -1,0 +1,215 @@
+@using Microsoft.AspNetCore.Identity
+@using HutechNovel.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@{
+    var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty).ToLowerInvariant();
+
+    string NavClass(string ctrl) =>
+        controller == ctrl.ToLower() ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — HutechNovel Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <style>
+            /* CSS cho Admin Dropdown */
+            .cyber-dropdown {
+                background-color: var(--public-surface);
+                border: 1px solid var(--public-border);
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                padding: 0.5rem;
+                min-width: 260px;
+                margin-top: 8px !important;
+            }
+        
+            .theme-light .cyber-dropdown {
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            }
+        
+            .cyber-dropdown .dropdown-item {
+                color: var(--public-text);
+                border-radius: 8px;
+                padding: 0.7rem 1rem;
+                font-weight: 600;
+                transition: all 0.2s;
+                margin-bottom: 2px;
+            }
+        
+                .cyber-dropdown .dropdown-item:hover,
+                .cyber-dropdown .dropdown-item.active {
+                    background-color: var(--public-green-soft);
+                    color: var(--public-green);
+                }
+        
+            .dropdown-toggle::after {
+                vertical-align: middle;
+                margin-left: 0.5rem;
+            }
+        
+            .cyber-dropdown .dropdown-header {
+                font-weight: 800;
+                color: var(--public-muted);
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                font-size: 0.8rem;
+                padding: 0.5rem 1rem;
+            }
+    </style>
+</head>
+<body class="theme-public">
+    <div class="app-shell">
+
+        @* ════ HEADER — public _Layout.cshtml ════ *@
+        <header class="app-header">
+            <div class="container app-header__inner">
+
+                <a asp-area="" asp-controller="Home" asp-action="Index" class="brand">
+                    <span class="brand__green">Hutech</span><span class="brand__white">Novel</span>
+                </a>
+
+                <nav class="main-nav">
+                    <a asp-area="" asp-controller="Home" asp-action="Index">Trang Chủ</a>
+                    <a asp-area="" asp-controller="Truyen" asp-action="Index">Thể Loại</a>
+                    <a asp-area="" asp-controller="XepHang" asp-action="Index">Bảng Xếp Hạng</a>
+                    <a asp-area="" asp-controller="TimKiem" asp-action="Index">Lọc Truyện</a>
+                </nav>
+
+                <div class="header-actions">
+                    <form asp-area="" asp-controller="TimKiem" asp-action="Index" method="get" class="header-search">
+                        <input type="text" name="keyword" placeholder="Tìm tên truyện, tác giả..." />
+                        <button type="submit">⌕</button>
+                    </form>
+                    <button type="button" id="themeToggle" class="theme-toggle" aria-label="Chuyển nền">◐</button>
+                    <partial name="~/Views/Shared/_LoginPartial.cshtml" />
+                </div>
+
+            </div>
+        </header>
+
+        @* ════ MAIN ════ *@
+        <main class="app-main">
+            <div class="container">
+
+                @* ── Admin / Uploader Control Bar ── *@
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-3" style="border-bottom: 1px solid var(--public-border);">
+                
+                    @* Kiểm tra quyền: Chỉ Admin mới thấy Dropdown Menu *@
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="dropdown">
+                            <button class="btn-neon dropdown-toggle" type="button" id="adminMenuBtn" data-bs-toggle="dropdown" aria-expanded="false"
+                                    style="min-width: 250px; text-align: left; display: flex; justify-content: space-between; align-items: center; background: rgba(53, 210, 120, 0.05);">
+                                <span style="font-weight: 800;"><i class="fas fa-terminal me-2"></i> TRUY CẬP QUẢN TRỊ</span>
+                            </button>
+                        
+                            <ul class="dropdown-menu cyber-dropdown" aria-labelledby="adminMenuBtn">
+                                <li class="dropdown-header">QUẢN LÝ NỘI DUNG</li>
+                                <li><a class="dropdown-item @NavClass("admindashboard")" asp-area="Admin" asp-controller="AdminDashboard" asp-action="Index">📊 Phân tích (Dashboard)</a></li>
+                                <li><a class="dropdown-item @NavClass("kiemduyettruyen")" asp-area="Admin" asp-controller="KiemDuyetTruyen" asp-action="Index">🛡 Kiểm duyệt toàn cầu</a></li>
+                                <li><a class="dropdown-item @NavClass("quanlytruyen")" asp-area="Admin" asp-controller="QuanLyTruyen" asp-action="Index">📚 Kho truyện (Cá nhân)</a></li>
+                            
+                                <li><hr class="dropdown-divider" style="border-color: var(--public-border);"></li>
+                            
+                                <li class="dropdown-header">CƠ SỞ DỮ LIỆU</li>
+                                <li><a class="dropdown-item @NavClass("quantriuser")" asp-area="Admin" asp-controller="QuanTriUser" asp-action="Index">👥 Quản trị Người dùng</a></li>
+                                <li><a class="dropdown-item @NavClass("admintacgia")" asp-area="Admin" asp-controller="AdminTacGia" asp-action="Index">✒ Danh sách Tác giả</a></li>
+                                <li><a class="dropdown-item @NavClass("quantrithe")" asp-area="Admin" asp-controller="QuanTriThe" asp-action="Index">🏷 Quản lý Thể loại / Tags</a></li>
+                                <li><a class="dropdown-item @NavClass("admincauhinh")" asp-area="Admin" asp-controller="AdminCauHinh" asp-action="Index">⚙ Cài đặt Website</a></li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        @* Giao diện dành riêng cho Uploader (Không có Menu xổ xuống) *@
+                        <div class="d-flex align-items-center">
+                            <span class="btn-pill is-active" style="cursor: default; padding: 0.6rem 1.2rem;">
+                                <i class="fas fa-book-open me-2"></i> Khu Vực Uploader
+                            </span>
+                        </div>
+                    }
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <form asp-area="Admin" asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <button class="btn-ghost" type="submit" style="padding: 0.5rem 1rem;">
+                                🚪 Đăng xuất Admin
+                            </button>
+                        </form>
+                    }
+                </div>
+                @* ── Flash messages ── *@
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="status-banner is-success mb-3">✅ @TempData["SuccessMessage"]</div>
+                }
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="status-banner is-danger mb-3">⚠ @TempData["ErrorMessage"]</div>
+                }
+                @if (TempData["WarningMessage"] != null)
+                {
+                    <div class="status-banner is-warning mb-3">
+                        ⚠ @TempData["WarningMessage"]
+                    </div>
+                }
+                @RenderBody()
+
+            </div>
+        </main>
+
+        @* ════ FOOTER ════ *@
+        <footer class="app-footer">
+            <div class="container app-footer__inner">
+                <div>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <h3 class="footer-title">HutechNovel Admin</h3>
+                        <p class="footer-copy">Khu vực quản trị — chỉ dành cho Admin và Uploader được cấp quyền.</p>
+                    }
+                    else
+                    {
+                        <h3 class="footer-title">HutechNovel Uploader</h3>
+                        <p class="footer-copy">Khu vực sáng tác và quản lý truyện — dành riêng cho Uploader.</p>
+                    }
+                </div>
+                <div class="footer-links">
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-area="Admin" asp-controller="AdminDashboard" asp-action="Index">Dashboard</a>
+                    }
+                
+                    <a asp-area="Admin" asp-controller="QuanLyTruyen" asp-action="Index">Kho truyện của bạn</a>
+                
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a asp-area="Admin" asp-controller="QuanTriUser" asp-action="Index">Người dùng</a>
+                    }
+                
+                    <a asp-area="" asp-controller="Home" asp-action="Index">Về trang chính</a>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
