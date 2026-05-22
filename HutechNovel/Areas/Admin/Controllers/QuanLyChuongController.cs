@@ -103,7 +103,7 @@ namespace HutechNovel.Areas.Admin.Controllers
             var truyen = await _context.Truyens.FindAsync(maTruyen);
             if (truyen != null)
             {
-                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == maTruyen);
+                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == maTruyen && c.TrangThai == TrangThaiChuong.DaXuatBan);
                 truyen.NgayCapNhat = DateTime.Now;
             }
 
@@ -199,7 +199,7 @@ namespace HutechNovel.Areas.Admin.Controllers
             var truyen = await _context.Truyens.FindAsync(chuong.MaTruyen);
             if (truyen != null)
             {
-                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == chuong.MaTruyen);
+                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == chuong.MaTruyen && c.TrangThai == TrangThaiChuong.DaXuatBan);
                 if (trangThai == TrangThaiChuong.DaXuatBan && !wasPublished)
                 {
                     truyen.NgayCapNhat = DateTime.Now;
@@ -229,7 +229,7 @@ namespace HutechNovel.Areas.Admin.Controllers
             var truyen = await _context.Truyens.FindAsync(maTruyen);
             if (truyen != null)
             {
-                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == maTruyen);
+                truyen.TongSoChuong = await _context.Chuongs.CountAsync(c => c.MaTruyen == maTruyen && c.TrangThai == TrangThaiChuong.DaXuatBan);
                 truyen.NgayCapNhat = DateTime.Now;
                 await _context.SaveChangesAsync();
             }

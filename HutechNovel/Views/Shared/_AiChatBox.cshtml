@@ -61,10 +61,22 @@
             return div.innerHTML;
         };
 
+        const renderBotReply = (value) => {
+            return escapeHtml(value)
+                .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, '<a href="$2">$1</a>')
+                .replace(/\n/g, "<br>");
+        };
+
         const appendMessage = (text, type, shouldSave = true) => {
             const item = document.createElement("div");
             item.className = `ai-message ai-message--${type}`;
-            item.textContent = text;
+
+            if (type === "bot") {
+                item.innerHTML = renderBotReply(text);
+            } else {
+                item.textContent = text;
+            }
+
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight;
 
@@ -152,7 +164,12 @@
             appendMessage(text, "user");
             input.value = "";
 
-            const typing = appendMessage("Đang trả lời...", "bot", false);
+            const typing = document.createElement("div");
+            typing.className = "ai-message ai-message--bot";
+            typing.textContent = "Đang trả lời...";
+            messages.appendChild(typing);
+            messages.scrollTop = messages.scrollHeight;
+
             try {
                 const response = await fetch("/api/ChatBot/Ask", {
                     method: "POST",
@@ -161,20 +178,25 @@
                 });
 
                 if (!response.ok) {
-                    typing.textContent = "Mình chưa xử lý được câu hỏi này. Bạn thử hỏi lại ngắn hơn nhé.";
-                    chatHistory.push({ type: "bot", text: typing.textContent });
+                    const errorText = "Mình chưa xử lý được câu hỏi này. Bạn thử hỏi lại ngắn hơn nhé.";
+                    typing.textContent = errorText;
+                    chatHistory.push({ type: "bot", text: errorText });
                     saveHistory();
                     return;
                 }
 
                 const data = await response.json();
-                typing.textContent = data.reply || "Mình chưa có câu trả lời phù hợp.";
-                chatHistory.push({ type: "bot", text: typing.textContent });
+                const replyText = data.reply || "Mình chưa có câu trả lời phù hợp.";
+
+                typing.innerHTML = renderBotReply(replyText);
+
+                chatHistory.push({ type: "bot", text: replyText });
                 saveHistory();
                 appendResults(data);
             } catch {
-                typing.textContent = "Không kết nối được trợ lý lúc này. Bạn thử lại sau nhé.";
-                chatHistory.push({ type: "bot", text: typing.textContent });
+                const catchText = "Không kết nối được trợ lý lúc này. Bạn thử lại sau nhé.";
+                typing.textContent = catchText;
+                chatHistory.push({ type: "bot", text: catchText });
                 saveHistory();
             }
         };

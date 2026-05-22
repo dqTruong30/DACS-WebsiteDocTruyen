@@ -142,15 +142,13 @@
                         </div>
                     }
 
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <form asp-area="Admin" asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
-                            @Html.AntiForgeryToken()
-                            <button class="btn-ghost" type="submit" style="padding: 0.5rem 1rem;">
-                                🚪 Đăng xuất Admin
-                            </button>
-                        </form>
-                    }
+                    @* Nút Đăng xuất tự động đổi tên theo Role *@
+                    <form asp-area="Admin" asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <button class="btn-ghost" type="submit" style="padding: 0.5rem 1rem;">
+                            🚪 @(User.IsInRole("Admin") ? "Đăng xuất Admin" : "Đăng xuất")
+                        </button>
+                    </form>
                 </div>
                 @* ── Flash messages ── *@
                 @if (TempData["SuccessMessage"] != null)

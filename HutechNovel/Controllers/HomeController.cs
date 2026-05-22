@@ -100,14 +100,6 @@ namespace HutechNovel.Controllers
                     .Take(5).ToListAsync()
             };
 
-            await ApplyChapterCountsAsync(
-                vm.TruyenHot.Select(x => x.Truyen)
-                    .Concat(vm.TopTruyenNgay.Select(x => x.Truyen))
-                    .Concat(vm.TopTruyenTuan.Select(x => x.Truyen))
-                    .Concat(vm.TruyenMoiCapNhat)
-                    .Concat(vm.TrendingStories)
-                    .Concat(vm.SmartRecommendations));
-
             return View(vm);
         }
 
@@ -184,24 +176,6 @@ namespace HutechNovel.Controllers
             return stories
                 .OrderBy(t => ids.IndexOf(t.MaTruyen))
                 .ToList();
-        }
-
-        private async Task ApplyChapterCountsAsync(IEnumerable<Truyen> stories)
-        {
-            var storyList = stories.ToList();
-            var storyIds = storyList.Select(t => t.MaTruyen).Distinct().ToList();
-            if (!storyIds.Any()) return;
-
-            var chapterCounts = await _context.Chuongs
-                .Where(c => storyIds.Contains(c.MaTruyen))
-                .GroupBy(c => c.MaTruyen)
-                .Select(g => new { MaTruyen = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MaTruyen, x => x.Count);
-
-            foreach (var story in storyList)
-            {
-                story.TongSoChuong = chapterCounts.GetValueOrDefault(story.MaTruyen);
-            }
         }
     }
 }

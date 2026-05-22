@@ -4,33 +4,74 @@
     ViewData["Title"] = "Tủ Truyện";
 }
 
+<style>
+    .library-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--public-border);
+        margin-bottom: 1.5rem;
+    }
+    .library-tab {
+        padding: 0.75rem 1.25rem;
+        cursor: pointer;
+        font-weight: 800;
+        color: var(--public-muted);
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px; /* overlap border */
+        transition: all 0.2s ease;
+        font-size: 1.05rem;
+    }
+    .library-tab:hover {
+        color: var(--public-text);
+    }
+    .library-tab.active {
+        color: var(--public-green);
+        border-bottom-color: var(--public-green);
+    }
+    .hutech-tab-pane {
+        display: none !important;
+    }
+    .hutech-tab-pane.active {
+        display: block !important;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
 <section class="panel mb-4">
     <div class="section-kicker">Tủ truyện cá nhân</div>
-    <h1 class="page-title">Lịch sử đọc, đang đọc, đã đọc xong và đọc sau</h1>
-    <div class="page-tabs">
-        <span class="status-chip">Lịch sử @Model.ReadingHistory.Count</span>
-        <span class="status-chip">Chương mới @Model.NewChapterStories.Count</span>
-        <span class="status-chip">Đang cày @Model.ReadingNowStories.Count</span>
-        <span class="status-chip">Tạm dừng @Model.PausedStories.Count</span>
-        <span class="status-chip">Yêu thích nhất @Model.FavoriteStories.Count</span>
-        <span class="status-chip">Đọc sau @Model.BookmarkedStories.Count</span>
-        <span class="status-chip">Hoàn thành @Model.CompletedStories.Count</span>
-    </div>
+    <h1 class="page-title mb-0">Thư viện của bạn</h1>
 </section>
 
-@if (Model.NewChapterStories.Any())
-{
-    <section class="follow-alert mb-4">
-        <div>
-            <strong>@Model.NewChapterStories.Count truyện bạn theo dõi vừa có chương mới.</strong>
-            <span><a asp-controller="NguoiDung" asp-action="ThongBao">Mở thông báo của tôi</a> để đọc ngay các chương mới nhất.</span>
-        </div>
-    </section>
-}
+<!-- THANH ĐIỀU HƯỚNG TABS -->
+<div class="library-tabs">
+    <div class="library-tab active" data-target="#tab-history">
+        <i class="fas fa-clock-rotate-left me-1"></i> Lịch sử đọc (@(Model.ReadingHistory.Count))
+    </div>
+    <div class="library-tab" data-target="#tab-bookmark">
+        <i class="fas fa-bookmark me-1"></i> Đánh dấu (@(Model.BookmarkedStories.Count))
+    </div>
+    <div class="library-tab" data-target="#tab-favorite">
+        <i class="fas fa-heart me-1"></i> Yêu thích & Theo dõi
+        @if (Model.NewChapterStories.Any())
+        {
+            <span class="badge bg-danger ms-1" style="font-size: 0.75rem; border-radius: 999px;">@Model.NewChapterStories.Count Mới</span>
+        }
+    </div>
+    <div class="library-tab" data-target="#tab-archive">
+        <i class="fas fa-box-archive me-1"></i> Lưu trữ (@(Model.PausedStories.Count + Model.CompletedStories.Count))
+    </div>
+</div>
 
-<section class="library-layout">
-    <div class="panel" id="history-panel">
-        <h2 class="section-title mb-3">Truyện vừa đọc</h2>
+<!-- ================= TAB 1: LỊCH SỬ ĐỌC ================= -->
+<div id="tab-history" class="hutech-tab-pane active">
+    <!-- Truyện vừa đọc -->
+    <section class="panel mb-4" id="history-panel">
+        <h2 class="section-title mb-3">Vừa đọc gần đây</h2>
         @if (Model.ReadingHistory.Any())
         {
             <div class="history-read-list">
@@ -88,143 +129,213 @@
         {
             <div class="empty-box">Chưa có lịch sử đọc.</div>
         }
-    </div>
+    </section>
 
-    <aside class="panel">
-        <h2 class="section-title mb-3">Mục nhanh</h2>
-        <ul class="simple-list">
-            <li class="simple-item"><strong>Chương mới</strong><span>@Model.NewChapterStories.Count truyện</span></li>
-            <li class="simple-item"><strong>Đang cày</strong><span>@Model.ReadingNowStories.Count truyện</span></li>
-            <li class="simple-item"><strong>Tạm dừng</strong><span>@Model.PausedStories.Count truyện</span></li>
-            <li class="simple-item"><strong>Yêu thích nhất</strong><span>@Model.FavoriteStories.Count truyện</span></li>
-            <li class="simple-item"><strong>Đọc sau</strong><span>@Model.BookmarkedStories.Count truyện</span></li>
-            <li class="simple-item"><strong>Đã đọc xong</strong><span>@Model.CompletedStories.Count truyện</span></li>
-        </ul>
-    </aside>
-</section>
-
-@if (Model.ReadingNowStories.Any())
-{
-    <section class="panel mt-4" id="reading-now-panel">
-        <div class="section-kicker">Kệ cá nhân</div>
-        <h2 class="section-title mb-4">Đang cày</h2>
-        <div class="follow-grid">
-            @foreach (var item in Model.ReadingNowStories)
-            {
-                <article class="panel follow-card @(item.HasNewChapter ? "has-new-chapter" : "")">
-                    <img class="follow-card__cover"
-                         src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
-                         alt="@item.Story.TieuDe"
-                         onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
-                    <div class="follow-card__body">
-                        <div class="follow-card__topline">
-                            <span class="new-chapter-badge"><i class="fas fa-book-open-reader me-1"></i>Đang cày</span>
-                            @if (item.LastReadChapterNumber.HasValue)
-                            {
-                                <span class="muted">Đã đọc tới chương @item.LastReadChapterNumber</span>
-                            }
-                        </div>
-                        <h3 class="follow-card__title">
-                            <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">@item.Story.TieuDe</a>
-                        </h3>
-                        @if (item.CurrentChapter != null)
-                        {
-                            <div class="follow-card__chapter">
-                                <span>Chương mới nhất</span>
-                                <a asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">
-                                    Chương @item.CurrentChapter.SoChuong: @item.CurrentChapter.TieuDe
-                                </a>
-                                <small>@item.CurrentChapter.NgayTao.ToString("dd/MM/yyyy HH:mm")</small>
+    <!-- Đang cày -->
+    @if (Model.ReadingNowStories.Any())
+    {
+        <section class="panel mt-4" id="reading-now-panel">
+            <h2 class="section-title mb-4">Đang cày (Đọc liên tục)</h2>
+            <div class="follow-grid">
+                @foreach (var item in Model.ReadingNowStories)
+                {
+                    <article class="panel follow-card @(item.HasNewChapter ? "has-new-chapter" : "")">
+                        <img class="follow-card__cover"
+                             src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                             alt="@item.Story.TieuDe"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <div class="follow-card__body">
+                            <div class="follow-card__topline">
+                                <span class="new-chapter-badge"><i class="fas fa-book-open-reader me-1"></i>Đang cày</span>
+                                @if (item.LastReadChapterNumber.HasValue)
+                                {
+                                    <span class="muted">Đã đọc tới chương @item.LastReadChapterNumber</span>
+                                }
                             </div>
-                        }
-                        <div class="follow-card__actions">
-                            <a class="btn-neon" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                            <h3 class="follow-card__title">
+                                <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">@item.Story.TieuDe</a>
+                            </h3>
                             @if (item.CurrentChapter != null)
                             {
-                                <a class="btn-ghost" asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">Đọc tiếp</a>
+                                <div class="follow-card__chapter">
+                                    <span>Chương mới nhất</span>
+                                    <a asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">
+                                        Chương @item.CurrentChapter.SoChuong: @item.CurrentChapter.TieuDe
+                                    </a>
+                                </div>
+                            }
+                            <div class="follow-card__actions">
+                                <a class="btn-neon" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                                @if (item.CurrentChapter != null)
+                                {
+                                    <a class="btn-ghost" asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">Đọc tiếp</a>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<!-- ================= TAB 2: ĐÁNH DẤU (ĐỌC SAU) ================= -->
+<div id="tab-bookmark" class="hutech-tab-pane">
+    <section class="panel" id="bookmark-panel">
+        <h2 class="section-title mb-4">Danh sách đánh dấu (Để dành đọc sau)</h2>
+        @if (Model.BookmarkedStories.Any())
+        {
+            <div class="card-grid">
+                @foreach (var item in Model.BookmarkedStories)
+                {
+                    <article class="story-card">
+                        <img class="story-cover"
+                             src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                             alt="@item.Story.TieuDe"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <div class="story-body">
+                            <span class="status-chip mb-2">Đọc sau</span>
+                            <h3 class="story-title">@item.Story.TieuDe</h3>
+                            <div class="muted">Đã lưu @item.LastActivity.ToString("dd/MM/yyyy")</div>
+                            <a class="btn-neon mt-3 d-inline-block" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-box">Bạn chưa đánh dấu bộ truyện nào.</div>
+        }
+    </section>
+</div>
+
+<!-- ================= TAB 3: YÊU THÍCH & THEO DÕI ================= -->
+<div id="tab-favorite" class="hutech-tab-pane">
+    @if (Model.NewChapterStories.Any())
+    {
+        <section class="follow-alert mb-4">
+            <div>
+                <strong>Có @Model.NewChapterStories.Count truyện bạn theo dõi vừa có chương mới.</strong>
+                <span><a asp-controller="NguoiDung" asp-action="ThongBao">Mở thông báo của tôi</a> để đọc ngay các chương mới nhất.</span>
+            </div>
+        </section>
+    }
+
+    <section class="panel" id="favorite-panel">
+        <h2 class="section-title mb-4">Truyện yêu thích & theo dõi</h2>
+        @if (Model.FavoriteStories.Any() || Model.FollowingStories.Any())
+        {
+            <div class="card-grid">
+                <!-- Hiển thị các truyện yêu thích -->
+                @foreach (var item in Model.FavoriteStories)
+                {
+                    <article class="story-card">
+                        <img class="story-cover"
+                             src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                             alt="@item.Story.TieuDe"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <div class="story-body">
+                            <span class="new-chapter-badge mb-2"><i class="fas fa-heart me-1"></i>Yêu thích</span>
+                            <h3 class="story-title">@item.Story.TieuDe</h3>
+                            <div class="muted">Đã thích từ @item.LastActivity.ToString("dd/MM/yyyy")</div>
+                            <a class="btn-neon mt-3 d-inline-block" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-box">Bạn chưa yêu thích bộ truyện nào.</div>
+        }
+    </section>
+</div>
+
+<!-- ================= TAB 4: LƯU TRỮ ================= -->
+<div id="tab-archive" class="hutech-tab-pane">
+    <section class="panel mb-4" id="paused-panel">
+        <h2 class="section-title mb-4">Tạm dừng đọc</h2>
+        @if (Model.PausedStories.Any())
+        {
+            <div class="card-grid">
+                @foreach (var item in Model.PausedStories)
+                {
+                    <article class="story-card">
+                        <img class="story-cover"
+                             src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                             alt="@item.Story.TieuDe"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <div class="story-body">
+                            <span class="status-chip mb-2">Tạm dừng từ @item.LastActivity.ToString("dd/MM/yyyy")</span>
+                            <h3 class="story-title">@item.Story.TieuDe</h3>
+                            @if (item.CurrentChapter != null)
+                            {
+                                <div class="muted">Đang ở chương @item.CurrentChapter.SoChuong</div>
+                                <a class="btn-ghost mt-3 d-inline-block" asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">Đọc tiếp</a>
                             }
                         </div>
-                    </div>
-                </article>
-            }
-        </div>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-box">Không có truyện nào đang tạm dừng.</div>
+        }
     </section>
-}
 
-@if (Model.PausedStories.Any())
-{
-    <section class="panel mt-4" id="paused-panel">
-        <div class="section-kicker">Kệ cá nhân</div>
-        <h2 class="section-title mb-4">Tạm dừng</h2>
-        <div class="card-grid">
-            @foreach (var item in Model.PausedStories)
-            {
-                <article class="story-card">
-                    <img class="story-cover"
-                         src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
-                         alt="@item.Story.TieuDe"
-                         onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
-                    <div class="story-body">
-                        <span class="status-chip mb-2">Tạm dừng từ @item.LastActivity.ToString("dd/MM/yyyy")</span>
-                        <h3 class="story-title">@item.Story.TieuDe</h3>
-                        @if (item.CurrentChapter != null)
-                        {
-                            <div class="muted">Đang ở chương @item.CurrentChapter.SoChuong</div>
-                            <a class="btn-ghost mt-3 d-inline-block" asp-controller="DocTruyen" asp-action="Index" asp-route-maTruyen="@item.Story.MaTruyen" asp-route-soChuong="@item.CurrentChapter.SoChuong">Đọc tiếp</a>
-                        }
-                    </div>
-                </article>
-            }
-        </div>
+    <section class="panel" id="completed-panel">
+        <h2 class="section-title mb-4">Đã đọc xong</h2>
+        @if (Model.CompletedStories.Any())
+        {
+            <div class="card-grid">
+                @foreach (var item in Model.CompletedStories)
+                {
+                    <article class="story-card">
+                        <img class="story-cover"
+                             src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
+                             alt="@item.Story.TieuDe"
+                             onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
+                        <div class="story-body">
+                            <span class="status-chip mb-2" style="background: rgba(34,255,102,0.1); color: var(--public-green);">Hoàn thành</span>
+                            <h3 class="story-title">@item.Story.TieuDe</h3>
+                            <a class="btn-neon mt-3 d-inline-block" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-box">Chưa có truyện nào hoàn thành.</div>
+        }
     </section>
-}
+</div>
 
-@if (Model.FavoriteStories.Any())
-{
-    <section class="panel mt-4" id="favorite-panel">
-        <div class="section-kicker">Kệ cá nhân</div>
-        <h2 class="section-title mb-4">Yêu thích nhất</h2>
-        <div class="card-grid">
-            @foreach (var item in Model.FavoriteStories)
-            {
-                <article class="story-card">
-                    <img class="story-cover"
-                         src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
-                         alt="@item.Story.TieuDe"
-                         onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
-                    <div class="story-body">
-                        <span class="new-chapter-badge mb-2"><i class="fas fa-heart me-1"></i>Yêu thích</span>
-                        <h3 class="story-title">@item.Story.TieuDe</h3>
-                        <div class="muted">Đã thích từ @item.LastActivity.ToString("dd/MM/yyyy")</div>
-                        <a class="btn-neon mt-3 d-inline-block" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
-                    </div>
-                </article>
-            }
-        </div>
-    </section>
-}
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const tabs = document.querySelectorAll('.library-tab');
+            const panes = document.querySelectorAll('.hutech-tab-pane');
 
-@if (Model.BookmarkedStories.Any())
-{
-    <section class="panel mt-4" id="bookmark-panel">
-        <div class="section-kicker">Kệ cá nhân</div>
-        <h2 class="section-title mb-4">Đọc sau</h2>
-        <div class="card-grid">
-            @foreach (var item in Model.BookmarkedStories)
-            {
-                <article class="story-card">
-                    <img class="story-cover"
-                         src="@(string.IsNullOrWhiteSpace(item.Story.AnhBia) ? "https://static.sangtacvietcdn.xyz/img/bookcover256.jpg" : item.Story.AnhBia)"
-                         alt="@item.Story.TieuDe"
-                         onerror="this.src='https://static.sangtacvietcdn.xyz/img/bookcover256.jpg';" />
-                    <div class="story-body">
-                        <span class="status-chip mb-2">Đọc sau</span>
-                        <h3 class="story-title">@item.Story.TieuDe</h3>
-                        <div class="muted">Đã lưu @item.LastActivity.ToString("dd/MM/yyyy")</div>
-                        <a class="btn-neon mt-3 d-inline-block" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@item.Story.MaTruyen">Xem truyện</a>
-                    </div>
-                </article>
-            }
-        </div>
-    </section>
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function () {
+                    // Xóa trạng thái active của tất cả các tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panes.forEach(p => p.classList.remove('active'));
+
+                    // Thêm trạng thái active cho tab hiện tại
+                    this.classList.add('active');
+
+                    // Hiển thị nội dung pane tương ứng
+                    const targetSelector = this.getAttribute('data-target');
+                    const targetPane = document.querySelector(targetSelector);
+                    if (targetPane) {
+                        targetPane.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
 }

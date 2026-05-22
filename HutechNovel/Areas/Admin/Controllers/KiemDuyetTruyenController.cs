@@ -72,7 +72,7 @@ namespace HutechNovel.Areas.Admin.Controllers
                 }
 
                 chuong.Truyen.TongSoChuong = await _context.Chuongs
-                    .CountAsync(c => c.MaTruyen == chuong.MaTruyen);
+                    .CountAsync(c => c.MaTruyen == chuong.MaTruyen && c.TrangThai == TrangThaiChuong.DaXuatBan);
 
                 _context.NhatKyQuanTris.Add(new NhatKyQuanTri
                 {

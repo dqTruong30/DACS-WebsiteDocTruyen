@@ -3,8 +3,6 @@ using HutechNovel.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
-using System.Text;
 
 namespace HutechNovel.Areas.Admin.Controllers
 {
@@ -33,9 +31,9 @@ namespace HutechNovel.Areas.Admin.Controllers
             var userStoriesBase = _context.Truyens.Where(t => t.NguoiDangId == userId);
 
             int totalStories = await userStoriesBase.CountAsync();
+            int totalChapters = await userStoriesBase.SumAsync(t => t.TongSoChuong);
             int totalViews = await userStoriesBase.SumAsync(t => t.TongLuotXem);
             var userStoryIds = await userStoriesBase.Select(t => t.MaTruyen).ToListAsync();
-            int totalChapters = await _context.Chuongs.CountAsync(c => userStoryIds.Contains(c.MaTruyen));
             var today = DateTime.Today;
 
             int totalFollowers = await _context.TheoDoiTruyens.CountAsync(t => userStoryIds.Contains(t.MaTruyen));
@@ -50,28 +48,20 @@ namespace HutechNovel.Areas.Admin.Controllers
                 .Where(t => t.NguoiDangId == userId)
                 .AsQueryable();
 
-            var filteredStories = await query
-                .OrderByDescending(t => t.NgayCapNhat)
-                .ToListAsync();
-
             if (!string.IsNullOrWhiteSpace(keyword))
             {
-                var normalizedKeyword = NormalizeForSearch(keyword);
-                filteredStories = filteredStories
-                    .Where(t => NormalizeForSearch(t.TieuDe).Contains(normalizedKeyword))
-                    .ToList();
+                query = query.Where(t => t.TieuDe.Contains(keyword));
             }
 
-            int totalFilteredItems = filteredStories.Count;
+            int totalFilteredItems = await query.CountAsync();
             int totalPages = (int)Math.Ceiling(totalFilteredItems / (double)pageSize);
 
             // Lấy ra 10 truyện của trang hiện tại
-            var storiesToDisplay = filteredStories
+            var storiesToDisplay = await query
+                .OrderByDescending(t => t.NgayCapNhat)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList();
-
-            await ApplyChapterCountsAsync(storiesToDisplay);
+                .ToListAsync();
 
             var topStories = await _context.Truyens
                 .Where(t => userStoryIds.Contains(t.MaTruyen))
@@ -85,8 +75,6 @@ namespace HutechNovel.Areas.Admin.Controllers
                 .ThenByDescending(t => t.TotalViews)
                 .Take(5)
                 .ToListAsync();
-
-            await ApplyChapterCountsAsync(topStories.Select(t => t.Story));
 
             var topChapters = await _context.LichSuDocs
                 .Include(ls => ls.Chuong)
@@ -424,46 +412,6 @@ namespace HutechNovel.Areas.Admin.Controllers
             foreach (var key in errorKeys)
             {
                 ModelState.Remove(key);
-            }
-        }
-
-        private static string NormalizeForSearch(string text)
-        {
-            var normalized = text.ToLowerInvariant().Normalize(NormalizationForm.FormD);
-            var builder = new StringBuilder(normalized.Length);
-
-            foreach (var character in normalized)
-            {
-                var category = CharUnicodeInfo.GetUnicodeCategory(character);
-                if (category == UnicodeCategory.NonSpacingMark)
-                {
-                    continue;
-                }
-
-                builder.Append(character == 'đ' ? 'd' : character);
-            }
-
-            return string.Join(" ", builder
-                .ToString()
-                .Normalize(NormalizationForm.FormC)
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        }
-
-        private async Task ApplyChapterCountsAsync(IEnumerable<Truyen> stories)
-        {
-            var storyList = stories.ToList();
-            var storyIds = storyList.Select(t => t.MaTruyen).Distinct().ToList();
-            if (!storyIds.Any()) return;
-
-            var chapterCounts = await _context.Chuongs
-                .Where(c => storyIds.Contains(c.MaTruyen))
-                .GroupBy(c => c.MaTruyen)
-                .Select(g => new { MaTruyen = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.MaTruyen, x => x.Count);
-
-            foreach (var story in storyList)
-            {
-                story.TongSoChuong = chapterCounts.GetValueOrDefault(story.MaTruyen);
             }
         }
     }

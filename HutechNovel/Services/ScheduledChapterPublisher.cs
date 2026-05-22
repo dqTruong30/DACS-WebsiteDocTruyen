@@ -62,7 +62,7 @@ namespace HutechNovel.Services
             foreach (var story in stories)
             {
                 story.TongSoChuong = await context.Chuongs
-                    .CountAsync(c => c.MaTruyen == story.MaTruyen, cancellationToken);
+                    .CountAsync(c => c.MaTruyen == story.MaTruyen && c.TrangThai == TrangThaiChuong.DaXuatBan, cancellationToken);
                 story.NgayCapNhat = now;
             }
 

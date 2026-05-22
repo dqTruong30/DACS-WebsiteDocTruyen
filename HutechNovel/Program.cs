@@ -19,6 +19,8 @@ builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddHostedService<ScheduledChapterPublisher>();
 builder.Services.AddHostedService<TrendingScoreUpdaterService>();
 
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IGeminiService, GeminiService>();
 
 
 
@@ -71,8 +73,8 @@ builder.Services.AddAuthentication()
     .AddGoogle(options =>
     {
         IConfigurationSection googleAuthNSection = builder.Configuration.GetSection("Authentication:Google");
-        options.ClientId = googleAuthNSection["ClientId"];
-        options.ClientSecret = googleAuthNSection["ClientSecret"];
+        options.ClientId = googleAuthNSection["ClientId"] ?? string.Empty;
+        options.ClientSecret = googleAuthNSection["ClientSecret"] ?? string.Empty;
     });
 
 
