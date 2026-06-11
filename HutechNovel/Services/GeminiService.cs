@@ -24,6 +24,7 @@ namespace HutechNovel.Services
                 return "Hệ thống AI chưa được cấu hình API Key. Vui lòng liên hệ quản trị viên.";
             }
 
+            // Chuẩn bị dữ liệu gửi đi (sử dụng Gemini Flash cho nhanh và rẻ)
             var requestUri = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={_apiKey}";
 
             var contents = new System.Collections.Generic.List<object>

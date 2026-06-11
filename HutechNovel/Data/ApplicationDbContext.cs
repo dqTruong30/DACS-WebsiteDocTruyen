@@ -27,6 +27,10 @@ namespace HutechNovel.Data
         public DbSet<TheoDoiTruyen> TheoDoiTruyens { get; set; }
         public DbSet<NhatKyQuanTri> NhatKyQuanTris { get; set; }
         public DbSet<BinhLuanCamXuc> BinhLuanCamXucs { get; set; }
+        public DbSet<NhiemVu> NhiemVus { get; set; }
+        public DbSet<LichSuNhiemVu> LichSuNhiemVus { get; set; }
+        public DbSet<CauHinhLeech> CauHinhLeeches { get; set; }
+        public DbSet<TienTrinhLeech> TienTrinhLeeches { get; set; }
 
         // ── Cấu hình hệ thống ────────────────────────────────────────────────────
         public DbSet<CauHinhHeThong> CauHinhHeThongs { get; set; }
@@ -174,6 +178,18 @@ namespace HutechNovel.Data
                 .HasOne(t => t.TacGia)
                 .WithMany(tg => tg.Truyens)
                 .HasForeignKey(t => t.MaTacGia)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LichSuNhiemVu>()
+                .HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LichSuNhiemVu>()
+                .HasOne(x => x.NhiemVu)
+                .WithMany(n => n.LichSuNhiemVus)
+                .HasForeignKey(x => x.MaNhiemVu)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

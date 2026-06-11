@@ -1,0 +1,41 @@
+@{
+    ViewData["Title"] = "Đăng Truyện Tranh (Gallery)";
+}
+
+<section class="panel">
+    <div class="mb-4">
+        <div class="section-kicker">Đăng truyện bằng hình ảnh</div>
+        <h1 class="page-title">Đăng Truyện Tranh</h1>
+    </div>
+
+    <form asp-area="Admin" asp-controller="QuanLyChuong" asp-action="ThemGallery" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="maTruyen" value="@ViewBag.MaTruyen" />
+        
+        <div class="mb-3">
+            <label class="fw-bold mb-2">Tiêu đề chương</label>
+            <input type="text" name="tieuDe" class="field" placeholder="VD: Chương 1: Bắt đầu" required autocomplete="off" />
+        </div>
+
+        <div class="mb-3">
+            <label class="fw-bold mb-2">Chọn ảnh (Gallery)</label>
+            <input type="file" name="images" class="field" accept="image/*" multiple required />
+            <small class="text-muted d-block mt-1">Lưu ý: Bạn có thể chọn nhiều ảnh cùng lúc. Ảnh sẽ được hiển thị theo thứ tự tên file.</small>
+        </div>
+
+        <div class="mb-3">
+            <label class="fw-bold mb-2">Trạng thái chương</label>
+            <select name="trangThai" class="field">
+                <option value="@HutechNovel.Models.TrangThaiChuong.DaXuatBan">Đăng ngay</option>
+                <option value="@HutechNovel.Models.TrangThaiChuong.BanNhap">Lưu nháp</option>
+            </select>
+        </div>
+        
+        <div class="d-flex gap-3">
+            <button class="btn-neon" type="submit">
+                <i class="fas fa-images me-2"></i> Đăng Truyện Tranh
+            </button>
+            <a class="btn-ghost" asp-action="DanhSach" asp-route-maTruyen="@ViewBag.MaTruyen">Quay lại</a>
+        </div>
+    </form>
+</section>

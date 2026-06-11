@@ -1,5 +1,6 @@
 ﻿using HutechNovel.Data;
 using HutechNovel.Models;
+using HutechNovel.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,11 +16,16 @@ namespace HutechNovel.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly INhiemVuService _nhiemVuService;
 
-        public TuongTacController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public TuongTacController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            INhiemVuService nhiemVuService)
         {
             _context = context;
             _userManager = userManager;
+            _nhiemVuService = nhiemVuService;
         }
 
         [HttpPost("DanhGia")]
@@ -154,6 +160,7 @@ namespace HutechNovel.Controllers
             if (user != null)
             {
                 user.SoBinhLuan += 1;
+                await _nhiemVuService.CapNhatTienDoAsync(user.Id, "BinhLuan");
             }
 
             await _context.SaveChangesAsync();

@@ -1,0 +1,304 @@
+@model IEnumerable<HutechNovel.Models.NhiemVu>
+@{
+    ViewData["Title"] = "Nhiệm Vụ & Điểm Danh";
+    var lichSu = ViewBag.LichSu as List<HutechNovel.Models.LichSuNhiemVu> ?? new List<HutechNovel.Models.LichSuNhiemVu>();
+    bool daDiemDanhHomNay = ViewBag.DaDiemDanhHomNay as bool? ?? false;
+    int hutechXu = ViewBag.HutechXu as int? ?? 0;
+    int veDaySach = ViewBag.VeDaySach as int? ?? 0;
+}
+
+<style>
+    .mission-page {
+        min-height: calc(100vh - 70px);
+        background: radial-gradient(circle at top right, rgba(20,30,48,1) 0%, rgba(36,59,85,1) 100%);
+        padding: 4rem 0;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 45px 0 rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .mission-title {
+        font-size: 3.5rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0px 5px 20px rgba(79, 172, 254, 0.3);
+        letter-spacing: -1px;
+    }
+
+    .checkin-btn {
+        background: linear-gradient(45deg, #11998e, #38ef7d);
+        border: none;
+        color: white;
+        font-weight: 700;
+        font-size: 1.2rem;
+        padding: 1rem 3rem;
+        border-radius: 50px;
+        box-shadow: 0 10px 20px rgba(56, 239, 125, 0.4);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .checkin-btn:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 15px 25px rgba(56, 239, 125, 0.5);
+        color: white;
+    }
+
+    .mission-item {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .mission-item:hover {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .coin-badge {
+        background: linear-gradient(45deg, #f6d365 0%, #fda085 100%);
+        color: #fff;
+        font-weight: 800;
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        box-shadow: 0 4px 15px rgba(253, 160, 133, 0.4);
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .shop-item-icon {
+        font-size: 4rem;
+        background: linear-gradient(45deg, #ff0844 0%, #ffb199 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 10px 10px rgba(255, 8, 68, 0.3));
+    }
+
+    .buy-btn {
+        background: transparent;
+        border: 2px solid #ff0844;
+        color: #ff0844;
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 0.8rem 2rem;
+        transition: all 0.3s ease;
+    }
+
+    .buy-btn:hover {
+        background: #ff0844;
+        color: white;
+        box-shadow: 0 8px 20px rgba(255, 8, 68, 0.4);
+    }
+
+    .custom-progress {
+        height: 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .custom-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
+        transition: width 0.25s ease;
+    }
+</style>
+
+<div class="mission-page">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-down">
+            <h1 class="mission-title mb-3">Tu Tiên Lộ</h1>
+            <p class="text-light opacity-75 fs-5">Hoàn thành nhiệm vụ mỗi ngày để tích lũy tài nguyên và đột phá cảnh giới</p>
+        </div>
+
+        <div class="row g-5 justify-content-center">
+            <!-- Cột Nhiệm Vụ -->
+            <div class="col-lg-8" data-aos="fade-right">
+                
+                <!-- Khu vực Điểm Danh -->
+                <div class="glass-card p-5 text-center mb-5 position-relative overflow-hidden">
+                    <div style="position: absolute; top: -50px; left: -50px; width: 150px; height: 150px; background: rgba(56, 239, 125, 0.2); filter: blur(40px); border-radius: 50%;"></div>
+                    <div style="position: absolute; bottom: -50px; right: -50px; width: 150px; height: 150px; background: rgba(79, 172, 254, 0.2); filter: blur(40px); border-radius: 50%;"></div>
+                    
+                    <h2 class="text-white fw-bold mb-3">
+                        <i class="fas fa-gift text-warning me-2"></i>Phúc Lợi Hàng Ngày
+                    </h2>
+                    <p class="text-light opacity-75 mb-4 fs-5">Nhận ngay <strong>10 HutechXu</strong> và <strong>50 EXP</strong> cho mỗi lần báo danh.</p>
+                    <button id="btnDiemDanh" class="checkin-btn" @(daDiemDanhHomNay ? "disabled" : "")>
+                        @if (daDiemDanhHomNay)
+                        {
+                            <span><i class="fas fa-check-circle me-2"></i>Đã Báo Danh Hôm Nay</span>
+                        }
+                        else
+                        {
+                            <span><i class="fas fa-magic me-2"></i>Báo Danh Nhận Thưởng</span>
+                        }
+                    </button>
+                </div>
+
+                <!-- Danh Sách Nhiệm Vụ -->
+                <div class="glass-card p-4 p-md-5">
+                    <h3 class="text-white fw-bold mb-4 d-flex align-items-center">
+                        <i class="fas fa-scroll text-info me-3"></i>Nhiệm Vụ Tu Hành
+                    </h3>
+                    
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var nv in Model.Where(n => n.LoaiDieuKien != "DiemDanh"))
+                        {
+                            var ls = lichSu.FirstOrDefault(x => x.MaNhiemVu == nv.MaNhiemVu);
+                            bool isCompleted = ls != null && ls.DaHoanThanh;
+                            int progress = ls != null ? ls.TienDo : 0;
+                            double percent = Math.Min(100.0, (progress / (double)nv.GiaTriYeuCau) * 100);
+                            string percentText = percent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+                            <div class="mission-item">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="text-white fw-bold mb-1">@nv.TenNhiemVu</h5>
+                                        <p class="text-light opacity-50 small mb-0">@nv.MoTa</p>
+                                    </div>
+                                    <div class="coin-badge">
+                                        <i class="fas fa-coins me-1"></i>+@nv.PhanThuongXu
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex align-items-center gap-3 mt-4">
+                                    <div class="flex-grow-1">
+                                        <div class="custom-progress">
+                                            <div class="custom-progress-bar" style="width: @percentText%;"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-info fw-bold small" style="min-width: 45px;">@progress / @nv.GiaTriYeuCau</span>
+                                    
+                                    @if (isCompleted)
+                                    {
+                                        <button class="btn btn-sm btn-success rounded-pill px-4 disabled" style="opacity: 0.8;">
+                                            <i class="fas fa-check-circle me-1"></i>Đã Xong
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-4 text-light disabled">
+                                            Chưa Xong
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cột Cửa Hàng -->
+            <div class="col-lg-4" data-aos="fade-left">
+                <div class="glass-card p-4 h-100">
+                    <h3 class="text-white fw-bold mb-4 d-flex align-items-center border-bottom border-secondary pb-3">
+                        <i class="fas fa-store text-warning me-3"></i>Tiên Các
+                    </h3>
+
+                    <div class="d-flex justify-content-between gap-2 mb-4">
+                        <div class="bg-dark rounded-3 p-3 flex-fill border border-secondary">
+                            <div class="text-light opacity-50 small">HutechXu</div>
+                            <div class="text-warning fw-bold"><i class="fas fa-coins me-1"></i>@hutechXu</div>
+                        </div>
+                        <div class="bg-dark rounded-3 p-3 flex-fill border border-secondary">
+                            <div class="text-light opacity-50 small">Vé đẩy sách</div>
+                            <div class="text-info fw-bold"><i class="fas fa-ticket-alt me-1"></i>@veDaySach</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center p-4 rounded-4" style="background: rgba(0,0,0,0.2);">
+                        <div class="mb-4">
+                            <i class="fas fa-ticket-alt shop-item-icon"></i>
+                        </div>
+                        <h4 class="text-white fw-bold">Thần Tài Lệnh</h4>
+                        <p class="text-light opacity-50 small mb-4">Vé Đẩy Sách - Dùng để buff độ HOT cho bộ truyện bạn yêu thích trên bảng xếp hạng.</p>
+                        
+                        <div class="d-flex justify-content-between align-items-center bg-dark rounded-pill p-2 px-3 mb-4 border border-secondary">
+                            <span class="text-light opacity-75 small fw-bold">Tiêu Hảo:</span>
+                            <span class="text-warning fw-bold fs-5"><i class="fas fa-coins me-1"></i> 50 Xu</span>
+                        </div>
+                        
+                        <button id="btnMuaVe" class="buy-btn w-100">
+                            <i class="fas fa-shopping-cart me-2"></i>Đổi Lệnh Bài
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Thêm AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <script>
+        if (window.AOS) {
+            AOS.init({
+                duration: 800,
+                once: true
+            });
+        }
+
+        $('#btnDiemDanh').click(function () {
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...');
+            
+            $.post('/NhiemVu/DiemDanh', function (res) {
+                if (res.success) {
+                    // Hiệu ứng pháo hoa nhẹ nếu có thể, hoặc SweetAlert
+                    alert("🎉 " + res.message);
+                    location.reload();
+                } else {
+                    alert("⚠️ " + res.message);
+                    btn.prop('disabled', false).html('<i class="fas fa-magic me-2"></i>Báo Danh Nhận Thưởng');
+                }
+            }).fail(function() {
+                alert("Có lỗi xảy ra, vui lòng thử lại!");
+                btn.prop('disabled', false).html('<i class="fas fa-magic me-2"></i>Báo Danh Nhận Thưởng');
+            });
+        });
+
+        $('#btnMuaVe').click(function () {
+            if (confirm("Bạn có chắc chắn muốn dùng 50 Xu để đổi 1 Thần Tài Lệnh (Vé Đẩy Sách)?")) {
+                const btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Đang đổi...');
+                
+                $.post('/NhiemVu/MuaVeDaySach', function (res) {
+                    if (res.success) {
+                        alert("✨ " + res.message);
+                        location.reload();
+                    } else {
+                        alert("❌ " + res.message);
+                        btn.prop('disabled', false).html('<i class="fas fa-shopping-cart me-2"></i>Đổi Lệnh Bài');
+                    }
+                }).fail(function() {
+                    alert("Có lỗi xảy ra, vui lòng thử lại!");
+                    btn.prop('disabled', false).html('<i class="fas fa-shopping-cart me-2"></i>Đổi Lệnh Bài');
+                });
+            }
+        });
+    </script>
+}

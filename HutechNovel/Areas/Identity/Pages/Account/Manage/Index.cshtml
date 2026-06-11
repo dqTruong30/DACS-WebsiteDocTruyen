@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Quản lý tài khoản";
     ViewData["ActivePage"] = ManageNavPages.Index;
+    var displayName = !string.IsNullOrWhiteSpace(Model.Input?.FullName) ? Model.Input.FullName : Model.Username;
 }
 
 <div class="manage-main__header">
@@ -29,10 +30,10 @@
             }
             else
             {
-                <div class="manage-avatar manage-avatar--fallback">@((Model.Username ?? "U").Substring(0, 1).ToUpper())</div>
+                <div class="manage-avatar manage-avatar--fallback">@((displayName ?? "U").Substring(0, 1).ToUpper())</div>
             }
             <div>
-                <h2 class="section-title mb-1">@Model.Username</h2>
+                <h2 class="section-title mb-1">@displayName</h2>
                 <div class="manage-helper">Bạn có thể cập nhật họ tên, số điện thoại và avatar ngay tại đây.</div>
             </div>
         </div>

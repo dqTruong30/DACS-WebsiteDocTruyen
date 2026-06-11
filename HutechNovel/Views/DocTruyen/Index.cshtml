@@ -203,6 +203,56 @@
     <button class="reader-float-btn reader-float-btn--accent" type="button" data-bs-toggle="offcanvas" data-bs-target="#ttsPanel" title="Text to speech">
         <i class="fas fa-volume-high"></i>
     </button>
+    <button class="reader-float-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocPanel" title="Mục lục nhanh">
+        <i class="fas fa-list"></i>
+    </button>
+    <button class="reader-float-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#replaceTextPanel" title="Sửa Name (Thay chữ)">
+        <i class="fas fa-pen-nib"></i>
+    </button>
+</div>
+
+<!-- PANEL SỬA NAME (REPLACE TEXT) -->
+<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="replaceTextPanel" style="background-color: var(--public-surface-2); color: var(--public-text);">
+    <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold">Từ điển cá nhân</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column gap-3">
+        <p class="small text-muted mb-0">Thay thế các từ không ưng ý (Ví dụ: tiểu tử &rarr; thằng nhóc). Chỉ áp dụng riêng cho truyện này và lưu trên máy của bạn.</p>
+        <form id="addReplaceNameForm" class="d-flex flex-column gap-2">
+            <input type="text" id="originalWord" class="form-control bg-dark text-light border-secondary" placeholder="Từ gốc (cần thay)" required />
+            <input type="text" id="replacementWord" class="form-control bg-dark text-light border-secondary" placeholder="Thay bằng..." required />
+            <button type="submit" class="btn-neon mt-1 w-100" style="padding: 0.5rem;">Thêm quy tắc</button>
+        </form>
+        <hr class="border-secondary my-1" />
+        <h6 class="fw-bold mb-0">Danh sách đã thêm:</h6>
+        <div id="replaceNameList" class="d-flex flex-column gap-2" style="overflow-y: auto;">
+            <!-- Render rules here -->
+        </div>
+    </div>
+</div>
+
+
+<!-- PANEL MỤC LỤC -->
+<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="tocPanel" style="background-color: var(--public-surface-2); color: var(--public-text);">
+    <div class="offcanvas-header border-bottom border-secondary">
+        <h5 class="offcanvas-title fw-bold">Mục lục nhanh</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column">
+        <div class="p-3 border-bottom border-secondary" style="position: sticky; top: 0; background-color: var(--public-surface-2); z-index: 10;">
+            <input type="text" id="quickTocSearch" class="form-control bg-dark text-light border-secondary" placeholder="Tìm theo số hoặc tên chương..." />
+        </div>
+        <div class="list-group list-group-flush" id="quickTocList" style="overflow-y: auto;">
+            @foreach (var ch in Model.Chapters.OrderBy(c => c.SoChuong))
+            {
+                <a href="@Url.Action("Index", "DocTruyen", new { maTruyen = Model.Chapter.MaTruyen, soChuong = ch.SoChuong })" 
+                   class="list-group-item list-group-item-action bg-transparent text-light border-secondary @(ch.MaChuong == Model.Chapter.MaChuong ? "active fw-bold text-success" : "")">
+                    @(ch.LaPhuChuong ? "Phụ chương" : $"Chương {ch.SoChuong}"): @ch.TieuDe
+                </a>
+            }
+        </div>
+    </div>
 </div>
 
 <!-- PANEL CÀI ĐẶT GIAO DIỆN -->
@@ -326,8 +376,18 @@
             });
             
             // Xử lý dữ liệu raw từ Server: Ép thẻ xuống dòng thành chuỗi text có ký tự \n
-            let rawStr = @Json.Serialize(Model.RawContent?.NoiDung ?? "");
-            let convStr = @Json.Serialize(Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "");
+            const serverRaw = @Json.Serialize(Model.RawContent?.NoiDung ?? "");
+            const serverConv = @Json.Serialize(Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "");
+            
+            // Replace Text (Sửa Name) Logic variables
+            const maTruyen = @Model.Chapter.MaTruyen;
+            const replaceKey = 'hutechnovel_replacements_' + maTruyen;
+            const replaceForm = document.getElementById('addReplaceNameForm');
+            const replaceList = document.getElementById('replaceNameList');
+            let replaceRules = JSON.parse(localStorage.getItem(replaceKey) || '[]');
+            
+            let pRaw = [];
+            let pConv = [];
             
             // Hàm chuyển đổi nội dung thành HTML với cấu trúc chia đoạn <p>
             function processTextToHTML(text) {
@@ -336,8 +396,25 @@
                 return paragraphs;
             }
 
-            let pRaw = processTextToHTML(rawStr);
-            let pConv = processTextToHTML(convStr);
+            function applyTextReplacements() {
+                let rawCopy = serverRaw;
+                let convCopy = serverConv;
+
+                if (replaceRules.length > 0) {
+                    replaceRules.forEach(rule => {
+                        const escapedOriginal = rule.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(escapedOriginal, 'g');
+                        rawCopy = rawCopy.replace(regex, rule.replacement);
+                        convCopy = convCopy.replace(regex, rule.replacement);
+                    });
+                }
+                
+                pRaw = processTextToHTML(rawCopy);
+                pConv = processTextToHTML(convCopy);
+            }
+            
+            // Khởi chạy lúc đầu
+            applyTextReplacements();
 
             // "ttsBlocks" chứa các ĐOẠN VĂN (Paragraph) nguyên vẹn để đọc 1 mạch
             let ttsBlocks = [];
@@ -845,6 +922,86 @@
                     populateVoices();
                 });
             });
+
+            // Phím tắt chuyển chương
+            document.addEventListener('keydown', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                if (e.key === 'ArrowLeft') {
+                    const prevBtn = document.querySelector('.reader-topbar a.btn-ghost');
+                    if (prevBtn && !prevBtn.classList.contains('disabled')) window.location.href = prevBtn.href;
+                } else if (e.key === 'ArrowRight') {
+                    const nextBtn = document.getElementById('btnNextChapterTop');
+                    if (nextBtn && !nextBtn.classList.contains('disabled')) window.location.href = nextBtn.href;
+                }
+            });
+
+
+            // Quick TOC Search
+            document.getElementById('quickTocSearch')?.addEventListener('input', function(e) {
+                const keyword = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('#quickTocList .list-group-item');
+                items.forEach(item => {
+                    if (item.textContent.toLowerCase().includes(keyword)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            function renderReplaceRules() {
+                if (!replaceList) return;
+                replaceList.innerHTML = '';
+                if (replaceRules.length === 0) {
+                    replaceList.innerHTML = '<span class="text-muted small">Chưa có quy tắc nào.</span>';
+                    return;
+                }
+                replaceRules.forEach((rule, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'd-flex justify-content-between align-items-center p-2 rounded bg-dark border border-secondary';
+                    div.innerHTML = `
+                        <div class="small text-light text-break">
+                            <span class="text-danger fw-bold">${rule.original}</span> 
+                            <i class="fas fa-arrow-right mx-1 text-muted"></i> 
+                            <span class="text-success fw-bold">${rule.replacement}</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1 ms-2" onclick="removeReplaceRule(${index})" title="Xóa">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    replaceList.appendChild(div);
+                });
+            }
+
+            window.removeReplaceRule = function(index) {
+                replaceRules.splice(index, 1);
+                localStorage.setItem(replaceKey, JSON.stringify(replaceRules));
+                renderReplaceRules();
+                applyTextReplacements();
+                prepareBlocks();
+            };
+
+            if (replaceForm) {
+                replaceForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const orig = document.getElementById('originalWord').value.trim();
+                    const repl = document.getElementById('replacementWord').value.trim();
+                    if (orig && repl) {
+                        if (!replaceRules.some(r => r.original === orig)) {
+                            replaceRules.push({ original: orig, replacement: repl });
+                            localStorage.setItem(replaceKey, JSON.stringify(replaceRules));
+                            renderReplaceRules();
+                            applyTextReplacements();
+                            prepareBlocks();
+                            replaceForm.reset();
+                        } else {
+                            alert("Từ gốc này đã tồn tại!");
+                        }
+                    }
+                });
+            }
+
+            renderReplaceRules();
 
             // Khởi động
             saveSettings(JSON.parse(localStorage.getItem(settingsKey) || "{}"));

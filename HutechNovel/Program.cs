@@ -21,6 +21,7 @@ builder.Services.AddHostedService<TrendingScoreUpdaterService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IGeminiService, GeminiService>();
+builder.Services.AddScoped<INhiemVuService, NhiemVuService>();
 
 
 
@@ -79,8 +80,11 @@ builder.Services.AddAuthentication()
 
 
 
-builder.Services.AddControllersWithViews();
-
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IPuppeteerProvider, PuppeteerProvider>();
+builder.Services.AddScoped<ILeechService, LeechService>();
+builder.Services.AddSingleton<ILeechTaskQueue, LeechTaskQueue>();
+builder.Services.AddHostedService<LeechBackgroundService>();
 
 var app = builder.Build();
 

@@ -1,8 +1,19 @@
-﻿@model HutechNovel.Models.Chuong
+@model HutechNovel.Models.Chuong
 
 @{
     ViewData["Title"] = "Chỉnh Sửa Chương";
     string selectedStatus = Model.TrangThai.ToString();
+
+    string FormatContentForEditor(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return content;
+        if (content.Contains("<p") || content.Contains("<br") || content.Contains("<img") || content.Contains("<div"))
+        {
+            return content;
+        }
+        var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        return string.Join("", lines.Select(l => $"<p>{l}</p>"));
+    }
 }
 
 <section class="panel">
@@ -16,10 +27,21 @@
         <input type="hidden" name="maChuong" value="@Model.MaChuong" />
         <input type="hidden" asp-for="MaTruyen" />
         
-        <div class="mb-3">
-            <label class="fw-bold mb-2">Tiêu đề chương</label>
-            <input type="text" name="tieuDe" class="field" required autocomplete="off" value="@Model.TieuDe" />
-            @Html.ValidationMessage("TieuDe", new { @class = "text-danger small" })
+        <div class="row g-3 mb-3">
+            <div class="col-md-8">
+                <label class="fw-bold mb-2">Tiêu đề chương</label>
+                <input type="text" name="tieuDe" class="field" required autocomplete="off" value="@Model.TieuDe" />
+                @Html.ValidationMessage("TieuDe", new { @class = "text-danger small" })
+            </div>
+            <div class="col-md-4">
+                <label class="fw-bold mb-2">Số thứ tự chương</label>
+                <input type="number" name="soChuong" class="field" value="@Model.SoChuong" required min="1" />
+            </div>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="laPhuChuong" name="laPhuChuong" value="true" @(Model.LaPhuChuong ? "checked" : "")>
+            <label class="form-check-label fw-bold" for="laPhuChuong">Đây là Phụ chương / Thông báo (Không tính vào tổng số chương)</label>
         </div>
 
         <div class="row g-3 mb-3">
@@ -37,15 +59,27 @@
                 @Html.ValidationMessage("NgayHenGio", new { @class = "text-danger small" })
             </div>
         </div>
-        
         <div class="mb-3">
             <label class="fw-bold mb-2">Nội dung Raw (Tiếng Trung/Bản gốc)</label>
-            <textarea name="noiDungRaw" class="field-textarea" style="min-height: 250px;">@ViewBag.NoiDungRaw</textarea>
+            <textarea name="noiDungRaw" id="noiDungRaw" class="field-textarea" style="min-height: 250px;">@Html.Raw(FormatContentForEditor(ViewBag.NoiDungRaw))</textarea>
         </div>
         
+        <div class="mb-3 d-flex gap-2 align-items-center bg-dark p-2 rounded" style="border: 1px solid #333;">
+            <button type="button" class="btn btn-sm btn-info text-dark fw-bold" id="btnTranslateHV">
+                <i class="fas fa-language me-1"></i> Dịch Hán Việt (Nhanh)
+            </button>
+            <button type="button" class="btn btn-sm btn-primary fw-bold" id="btnTranslateAI">
+                <i class="fas fa-robot me-1"></i> Dịch bằng AI (Gemini)
+            </button>
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#nameDictionaryModal">
+                <i class="fas fa-book me-1"></i> Từ Điển (Name)
+            </button>
+            <span id="translateStatus" class="ms-2 text-warning small fw-bold"></span>
+        </div>
+
         <div class="mb-4">
             <label class="fw-bold mb-2">Nội dung Convert/Dịch</label>
-            <textarea name="noiDungText" class="field-textarea" style="min-height: 350px;">@ViewBag.NoiDungText</textarea>
+            <textarea name="noiDungText" id="noiDungText" class="field-textarea" style="min-height: 350px;">@Html.Raw(FormatContentForEditor(ViewBag.NoiDungText))</textarea>
         </div>
         
         <div class="d-flex gap-3">
@@ -57,8 +91,147 @@
     </form>
 </section>
 
+<!-- Modal Từ Điển Name -->
+<div class="modal fade" id="nameDictionaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="fas fa-book text-warning me-2"></i>Từ Điển Riêng (Name)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">Nhập mỗi từ một dòng theo định dạng <code>Tên gốc=Tên mới</code> (VD: <code>李修=Lý Tu</code>). Các từ này sẽ được ưu tiên thay thế trước khi dịch.</p>
+                <textarea id="nameDictionaryInput" class="form-control bg-dark text-light border-secondary" rows="10" placeholder="李修=Lý Tu Nhi&#10;Qidian=Khởi Điểm"></textarea>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="btnSaveNameDictionary">Lưu Từ Điển</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="~/js/hanviet.js"></script>
+    <script src="https://cdn.tiny.cloud/1/fwminqyah78f77ua67le5ef8uppfyyzvdrbbnlew439z58yp/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
     <script>
+        // --- AUTO-CONVERT TOOL LOGIC ---
+        const maTruyenDict = @Model.MaTruyen;
+        const dictKeyStr = `hutech-dict-${maTruyenDict}`;
+        const dictInputEl = document.getElementById('nameDictionaryInput');
+        
+        // Load dict on start
+        dictInputEl.value = localStorage.getItem(dictKeyStr) || "";
+        
+        document.getElementById('btnSaveNameDictionary').addEventListener('click', () => {
+            localStorage.setItem(dictKeyStr, dictInputEl.value);
+            // Hide modal
+            const modalEl = document.getElementById('nameDictionaryModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalInstance.hide();
+        });
+
+        function applyDictionary(text) {
+            const dictStr = localStorage.getItem(dictKeyStr) || "";
+            if (!dictStr.trim()) return text;
+            
+            const lines = dictStr.split('\n');
+            let result = text;
+            lines.forEach(line => {
+                if (line.includes('=')) {
+                    const parts = line.split('=');
+                    if (parts.length >= 2) {
+                        const from = parts[0].trim();
+                        const to = parts.slice(1).join('=').trim();
+                        if (from) {
+                            result = result.split(from).join(to);
+                        }
+                    }
+                }
+            });
+            return result;
+        }
+
+        document.getElementById('btnTranslateHV').addEventListener('click', () => {
+            const rawText = document.getElementById('noiDungRaw').value;
+            if (!rawText.trim()) return alert("Vui lòng nhập nội dung Raw!");
+            
+            const status = document.getElementById('translateStatus');
+            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang dịch Hán Việt...';
+            
+            setTimeout(() => {
+                let processed = applyDictionary(rawText);
+                
+                if (typeof hanvietdic !== 'undefined') {
+                    let result = "";
+                    for (let i = 0; i < processed.length; i++) {
+                        const char = processed[i];
+                        if (hanvietdic[char]) {
+                            result += hanvietdic[char] + " ";
+                        } else {
+                            result += char;
+                        }
+                    }
+                    processed = result.replace(/ \n /g, '\n').replace(/ \n/g, '\n').replace(/\n /g, '\n');
+                }
+                
+                if (typeof tinymce !== 'undefined' && tinymce.get('noiDungText')) {
+                    let lines = processed.split('\n');
+                    let html = lines.map(l => l.trim() ? `<p>${l}</p>` : '<br>').join('');
+                    tinymce.get('noiDungText').setContent(html);
+                } else {
+                    document.getElementById('noiDungText').value = processed;
+                }
+                
+                status.innerHTML = '<i class="fas fa-check text-success"></i> Xong!';
+                setTimeout(() => status.innerHTML = '', 3000);
+            }, 100);
+        });
+
+        document.getElementById('btnTranslateAI').addEventListener('click', async () => {
+            const rawText = document.getElementById('noiDungRaw').value;
+            if (!rawText.trim()) return alert("Vui lòng nhập nội dung Raw!");
+            
+            const status = document.getElementById('translateStatus');
+            const btn = document.getElementById('btnTranslateAI');
+            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gọi AI dịch (khoảng 10-20s)...';
+            btn.disabled = true;
+            
+            let processed = applyDictionary(rawText);
+            
+            try {
+                const tieuDeInput = document.getElementById('tieuDe') || document.querySelector('input[name="tieuDe"]');
+                const rawTitle = tieuDeInput ? tieuDeInput.value : '';
+
+                const res = await fetch('/Admin/QuanLyChuong/TranslateText', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rawText: processed, rawTitle: rawTitle })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (window.tinymce && tinymce.get('noiDungText')) {
+                        tinymce.get('noiDungText').setContent(data.result);
+                    } else {
+                        document.getElementById('noiDungText').value = data.result;
+                    }
+                    if (data.titleResult && tieuDeInput) {
+                        tieuDeInput.value = data.titleResult.trim();
+                    }
+                    status.innerHTML = '<i class="fas fa-check text-success"></i> Dịch AI thành công!';
+                } else {
+                    status.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> Lỗi: ${data.error}`;
+                }
+            } catch (e) {
+                status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Lỗi kết nối AI!';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { if (status.innerHTML.includes('thành công')) status.innerHTML = ''; }, 5000);
+            }
+        });
+        
+        // --- END AUTO-CONVERT TOOL LOGIC ---
+        
         (() => {
             const form = document.querySelector('form');
             const status = document.getElementById('chapterStatus');
@@ -77,17 +250,51 @@
                 });
             } catch { }
 
-            fields.forEach(field => {
-                field.addEventListener('input', () => {
-                    const data = {};
-                    fields.forEach(item => data[item.name] = item.value);
-                    localStorage.setItem(storageKey, JSON.stringify(data));
-                });
-            });
+            setInterval(() => {
+                if (typeof tinymce !== 'undefined') tinymce.triggerSave();
+                const data = {};
+                fields.forEach(item => data[item.name] = item.value);
+                localStorage.setItem(storageKey, JSON.stringify(data));
+            }, 5000);
 
             form?.addEventListener('submit', () => localStorage.removeItem(storageKey));
             status?.addEventListener('change', toggleSchedule);
             toggleSchedule();
+
+            tinymce.init({
+                selector: '#noiDungText',
+                plugins: 'image link media table charmap lists fullscreen preview',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | removeformat | fullscreen',
+                menubar: false,
+                image_title: true,
+                automatic_uploads: true,
+                file_picker_types: 'image',
+                file_picker_callback: (cb, value, meta) => {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'file');
+                    input.setAttribute('accept', 'image/*');
+                    input.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.addEventListener('load', () => {
+                            const id = 'blobid' + (new Date()).getTime();
+                            const blobCache = tinymce.activeEditor.editorUpload.blobCache;
+                            const base64 = reader.result.split(',')[1];
+                            const blobInfo = blobCache.create(id, file, base64);
+                            blobCache.add(blobInfo);
+                            cb(blobInfo.blobUri(), { title: file.name });
+                        });
+                        reader.readAsDataURL(file);
+                    });
+                    input.click();
+                },
+                setup: function (editor) {
+                    editor.on('change keyup', function () {
+                        editor.save();
+                        editor.getElement().dispatchEvent(new Event('input'));
+                    });
+                }
+            });
         })();
     </script>
 }

@@ -1,0 +1,275 @@
+@{
+    ViewData["Title"] = "Auto Leech Picker";
+}
+
+<style>
+    .leech-container {
+        display: flex;
+        height: calc(100vh - 120px);
+        margin: -1rem -1rem -2rem -1rem;
+        background: #f8fafc;
+    }
+    .leech-sidebar {
+        width: 350px;
+        background: #ffffff;
+        border-right: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        z-index: 10;
+    }
+    .leech-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+    .iframe-wrapper {
+        flex: 1;
+        position: relative;
+    }
+    #pickerIframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #fff;
+    }
+    .selector-group {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s;
+    }
+    .selector-group.active {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: #eff6ff;
+    }
+    .picker-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        display: none;
+    }
+</style>
+
+<div class="leech-container">
+    <!-- Cột điều khiển -->
+    <div class="leech-sidebar">
+        <div class="d-flex align-items-center mb-4 gap-3">
+            <a href="@Url.Action("DanhSach", "QuanLyChuong", new { area = "Admin", maTruyen = ViewBag.MaTruyen })" class="btn btn-outline-secondary btn-sm" title="Quay lại">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 text-primary fw-bold" style="font-size: 1.2rem;">Auto Leech Tool</h4>
+        </div>
+
+        <div class="alert alert-info py-2 small mb-4">
+            <i class="fas fa-info-circle"></i> Đang chọn cấu hình cho truyện:<br>
+            <strong>@ViewBag.TenTruyen</strong>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-bold">1. Nhập URL trang mồi</label>
+            <div class="input-group">
+                <input type="url" id="targetUrl" class="form-control" placeholder="https://..." required>
+                <button class="btn btn-primary" id="btnLoadPage" type="button"><i class="fas fa-globe"></i> Tải</button>
+            </div>
+        </div>
+
+        <h6 class="fw-bold text-muted mb-3">2. Lấy bộ quy tắc (Selector)</h6>
+        
+        <div class="selector-group" id="group-title">
+            <label class="form-label small fw-bold">Tiêu đề chương (Title)</label>
+            <input type="text" id="sel-title" class="form-control form-control-sm mb-2" placeholder=".chapter-title">
+            <button type="button" class="btn btn-sm btn-outline-primary picker-btn" data-target="title">
+                <i class="fas fa-hand-pointer"></i> Chọn phần tử
+            </button>
+        </div>
+
+        <div class="selector-group" id="group-content">
+            <label class="form-label small fw-bold">Nội dung truyện (Content)</label>
+            <input type="text" id="sel-content" class="form-control form-control-sm mb-2" placeholder="#chapter-c">
+            <button type="button" class="btn btn-sm btn-outline-primary picker-btn" data-target="content">
+                <i class="fas fa-hand-pointer"></i> Chọn phần tử
+            </button>
+        </div>
+
+        <div class="selector-group" id="group-next">
+            <label class="form-label small fw-bold">Nút chuyển chương kế tiếp</label>
+            <input type="text" id="sel-next" class="form-control form-control-sm mb-2" placeholder="a#next_chap">
+            <button type="button" class="btn btn-sm btn-outline-primary picker-btn" data-target="next">
+                <i class="fas fa-hand-pointer"></i> Chọn phần tử
+            </button>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-bold">3. Tùy chọn (Giới hạn)</label>
+            <div class="input-group">
+                <input type="number" id="maxChapters" class="form-control" placeholder="Số chương cần cào (để trống là cào hết)" min="1">
+            </div>
+            <small class="text-muted">Ví dụ: Điền 50 để chỉ cào 50 chương rồi dừng.</small>
+        </div>
+
+        <div class="mt-auto pt-3">
+            <button type="button" id="btnStartLeech" class="btn btn-success w-100 btn-lg shadow-sm">
+                <i class="fas fa-play"></i> Bắt Đầu Cào
+            </button>
+        </div>
+    </div>
+
+    <!-- Cột Iframe Preview -->
+    <div class="leech-content">
+        <div class="loading-overlay" id="iframeLoading">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+            <div class="mt-3 fw-bold text-primary">Đang tải trang & chèn Picker...</div>
+        </div>
+        <div class="iframe-wrapper">
+            <iframe id="pickerIframe" src="about:blank"></iframe>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentTarget = null;
+        let iframe = document.getElementById('pickerIframe');
+        let loading = document.getElementById('iframeLoading');
+        const maTruyen = @(ViewBag.MaTruyen);
+
+        // Load iframe via Proxy
+        document.getElementById('btnLoadPage').addEventListener('click', async function() {
+            let url = document.getElementById('targetUrl').value;
+            if(!url) return alert('Vui lòng nhập URL');
+            
+            loading.style.display = 'flex';
+            let proxyUrl = '@Url.Action("Proxy", "Leech", new { area = "Admin" })?url=' + encodeURIComponent(url);
+            iframe.src = proxyUrl;
+
+            // Check config if exists
+            try {
+                let domain = new URL(url).hostname;
+                let res = await fetch('@Url.Action("GetConfig", "Leech", new { area = "Admin" })?domain=' + domain);
+                if(res.ok) {
+                    let config = await res.json();
+                    if(config) {
+                        document.getElementById('sel-title').value = config.titleSelector;
+                        document.getElementById('sel-content').value = config.contentSelector;
+                        document.getElementById('sel-next').value = config.nextChapterSelector;
+                    }
+                }
+            } catch(e) {}
+        });
+
+        iframe.onload = function() {
+            if(iframe.src !== 'about:blank' && iframe.src.indexOf('Proxy') > -1) {
+                loading.style.display = 'none';
+            }
+        };
+
+        // Kích hoạt Picker
+        document.querySelectorAll('.picker-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Reset all
+                document.querySelectorAll('.selector-group').forEach(g => g.classList.remove('active'));
+                document.querySelectorAll('.picker-btn').forEach(b => {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-outline-primary');
+                    b.innerHTML = '<i class="fas fa-hand-pointer"></i> Chọn phần tử';
+                });
+
+                // Active this
+                currentTarget = this.getAttribute('data-target');
+                this.closest('.selector-group').classList.add('active');
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-primary');
+                this.innerHTML = '<i class="fas fa-crosshairs fa-spin"></i> Đang chọn... Click vào phần tử bên web';
+
+                // Send message to iframe to enable picking
+                iframe.contentWindow.postMessage({ action: 'enablePicker' }, '*');
+            });
+        });
+
+        // Nhận dữ liệu từ iframe
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'selectorPicked') {
+                if (currentTarget) {
+                    let input = document.getElementById('sel-' + currentTarget);
+                    input.value = e.data.selector;
+                    
+                    // Highlight input to show it was updated
+                    input.style.backgroundColor = '#dcfce3';
+                    setTimeout(() => input.style.backgroundColor = '', 1000);
+
+                    // Reset button state
+                    let btn = document.querySelector(`.picker-btn[data-target="${currentTarget}"]`);
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                    btn.innerHTML = '<i class="fas fa-check"></i> Đã chọn';
+                    btn.closest('.selector-group').classList.remove('active');
+                    
+                    currentTarget = null;
+                }
+            }
+        });
+
+        // Start Leech
+        document.getElementById('btnStartLeech').addEventListener('click', async function() {
+            let url = document.getElementById('targetUrl').value;
+            let t = document.getElementById('sel-title').value;
+            let c = document.getElementById('sel-content').value;
+            let n = document.getElementById('sel-next').value;
+            let maxC = document.getElementById('maxChapters').value;
+
+            if(!url || !t || !c || !n) {
+                return alert('Vui lòng nhập đủ Link mồi và các Selector (Tiêu đề, Nội dung, Link Next)!');
+            }
+
+            if(!confirm('Xác nhận lưu cấu hình và bắt đầu chạy cào ngầm?')) return;
+
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            this.disabled = true;
+
+            const req = {
+                TruyenId: maTruyen,
+                StartUrl: url,
+                TitleSelector: t,
+                ContentSelector: c,
+                NextSelector: n,
+                MaxChapters: maxC ? parseInt(maxC) : null
+            };
+
+            try {
+                let res = await fetch('@Url.Action("StartMassLeech", "Leech", new { area = "Admin" })', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(req)
+                });
+                let data = await res.json();
+                if(data.success) {
+                    alert('Đã lưu cấu hình và bắt đầu cào ngầm thành công!');
+                    window.location.href = '@Url.Action("DanhSach", "QuanLyChuong", new { area = "Admin", maTruyen = ViewBag.MaTruyen })';
+                } else {
+                    alert('Lỗi: ' + data.message);
+                    this.innerHTML = '<i class="fas fa-play"></i> Bắt Đầu Cào';
+                    this.disabled = false;
+                }
+            } catch(e) {
+                alert('Có lỗi mạng.');
+                this.innerHTML = '<i class="fas fa-play"></i> Bắt Đầu Cào';
+                this.disabled = false;
+            }
+        });
+    </script>
+}

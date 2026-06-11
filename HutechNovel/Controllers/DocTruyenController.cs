@@ -1,5 +1,6 @@
 using HutechNovel.Data;
 using HutechNovel.Models;
+using HutechNovel.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +11,16 @@ namespace HutechNovel.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly INhiemVuService _nhiemVuService;
 
-        public DocTruyenController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public DocTruyenController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            INhiemVuService nhiemVuService)
         {
             _context = context;
             _userManager = userManager;
+            _nhiemVuService = nhiemVuService;
         }
 
         [Route("DocTruyen/{maTruyen:int}/{soChuong:int}")]
@@ -117,6 +123,7 @@ namespace HutechNovel.Controllers
                         ViTriDoc = "0"
                     });
                     user.SoChuongDaDoc += 1;
+                    await _nhiemVuService.CapNhatTienDoAsync(user.Id, "DocChuong");
                 }
 
                 // Cập nhật số chương đã đọc (có thể bạn muốn thêm logic check để không cộng dồn mãi 1 chương)

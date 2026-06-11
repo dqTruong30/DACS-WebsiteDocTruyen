@@ -141,7 +141,13 @@
             {
                 <tr>
                     <td><strong>@story.TieuDe</strong></td>
-                    <td><span class="status-chip">@StatusText(story.TrangThai)</span></td>
+                    <td>
+                        <select class="field-select status-quick-select" data-id="@story.MaTruyen" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background-color: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); cursor: pointer;">
+                            <option value="DangTienHanh" selected="@(story.TrangThai == TrangThaiTruyen.DangTienHanh)">Đang tiến hành</option>
+                            <option value="DaHoanThanh" selected="@(story.TrangThai == TrangThaiTruyen.DaHoanThanh)">Đã hoàn thành</option>
+                            <option value="TamNgung" selected="@(story.TrangThai == TrangThaiTruyen.TamNgung)">Tạm ngưng</option>
+                        </select>
+                    </td>
                     <td>@story.TongSoChuong chương, @story.TongLuotXem lượt xem</td>
                     <td>@story.NgayCapNhat.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>
@@ -249,6 +255,37 @@
                     hiddenInput.value = storyId;
                 });
             }
+
+            // Quick status change
+            document.querySelectorAll('.status-quick-select').forEach(select => {
+                select.addEventListener('change', async function() {
+                    let maTruyen = this.getAttribute('data-id');
+                    let trangThai = this.value;
+                    let originalBg = this.style.backgroundColor;
+                    this.style.backgroundColor = 'rgba(255,255,255,0.2)'; 
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('maTruyen', maTruyen);
+                        formData.append('trangThai', trangThai);
+                        
+                        const response = await fetch('@Url.Action("DoiTrangThaiTruyenNhanh", "QuanLyTruyen", new { area = "Admin" })', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            this.style.backgroundColor = originalBg;
+                        } else {
+                            alert(result.message);
+                            window.location.reload();
+                        }
+                    } catch (e) {
+                        alert("Có lỗi xảy ra");
+                        window.location.reload();
+                    }
+                });
+            });
         });
     </script>
 }

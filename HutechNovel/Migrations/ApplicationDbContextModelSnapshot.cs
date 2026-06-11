@@ -48,6 +48,9 @@ namespace HutechNovel.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("DiemKinhNghiem")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -57,6 +60,9 @@ namespace HutechNovel.Migrations
 
                     b.Property<string>("HoTen")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("HutechXu")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("KhaiSinh")
                         .HasColumnType("datetime2");
@@ -130,17 +136,17 @@ namespace HutechNovel.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaBinhLuan"));
 
-                    b.Property<int?>("MaBinhLuanCha")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("MaChuong")
-                        .HasColumnType("int");
-
                     b.Property<bool>("DaGhim")
                         .HasColumnType("bit");
 
                     b.Property<bool>("LaSpoiler")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("MaBinhLuanCha")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaChuong")
+                        .HasColumnType("int");
 
                     b.Property<string>("MaNguoiDung")
                         .IsRequired()
@@ -173,6 +179,34 @@ namespace HutechNovel.Migrations
                     b.HasIndex("MaTruyen");
 
                     b.ToTable("BinhLuans");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.BinhLuanCamXuc", b =>
+                {
+                    b.Property<int>("MaCamXuc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaCamXuc"));
+
+                    b.Property<int>("MaBinhLuan")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MaNguoiDung")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("NgayTao")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("MaCamXuc");
+
+                    b.HasIndex("MaBinhLuan");
+
+                    b.HasIndex("MaNguoiDung", "MaBinhLuan")
+                        .IsUnique();
+
+                    b.ToTable("BinhLuanCamXucs");
                 });
 
             modelBuilder.Entity("HutechNovel.Models.CauHinhHeThong", b =>
@@ -213,6 +247,39 @@ namespace HutechNovel.Migrations
                     b.ToTable("CauHinhHeThongs");
                 });
 
+            modelBuilder.Entity("HutechNovel.Models.CauHinhLeech", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentSelector")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NextChapterSelector")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("TitleSelector")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CauHinhLeeches");
+                });
+
             modelBuilder.Entity("HutechNovel.Models.Chuong", b =>
                 {
                     b.Property<int>("MaChuong")
@@ -220,6 +287,9 @@ namespace HutechNovel.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaChuong"));
+
+                    b.Property<bool>("LaPhuChuong")
+                        .HasColumnType("bit");
 
                     b.Property<int>("MaTruyen")
                         .HasColumnType("int");
@@ -243,8 +313,7 @@ namespace HutechNovel.Migrations
 
                     b.HasKey("MaChuong");
 
-                    b.HasIndex("MaTruyen", "SoChuong")
-                        .IsUnique();
+                    b.HasIndex("MaTruyen", "SoChuong");
 
                     b.ToTable("Chuongs");
                 });
@@ -364,6 +433,42 @@ namespace HutechNovel.Migrations
                     b.ToTable("LichSuDocs");
                 });
 
+            modelBuilder.Entity("HutechNovel.Models.LichSuNhiemVu", b =>
+                {
+                    b.Property<int>("MaLichSu")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaLichSu"));
+
+                    b.Property<bool>("DaHoanThanh")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("DaNhanThuong")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaNhiemVu")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NgayCapNhat")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TienDo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("MaLichSu");
+
+                    b.HasIndex("MaNhiemVu");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LichSuNhiemVus");
+                });
+
             modelBuilder.Entity("HutechNovel.Models.LuotXem", b =>
                 {
                     b.Property<int>("MaLuotXem")
@@ -391,6 +496,81 @@ namespace HutechNovel.Migrations
                     b.HasIndex("MaTruyen");
 
                     b.ToTable("LuotXems");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.NhatKyQuanTri", b =>
+                {
+                    b.Property<int>("MaNhatKy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNhatKy"));
+
+                    b.Property<string>("DoiTuong")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HanhDong")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("MaDoiTuong")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MaNguoiDung")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("NgayTao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NoiDung")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MaNhatKy");
+
+                    b.ToTable("NhatKyQuanTris");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.NhiemVu", b =>
+                {
+                    b.Property<int>("MaNhiemVu")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNhiemVu"));
+
+                    b.Property<int>("GiaTriYeuCau")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LoaiDieuKien")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("LoaiNhiemVu")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("MoTa")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PhanThuongKinhNghiem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhanThuongXu")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenNhiemVu")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("MaNhiemVu");
+
+                    b.ToTable("NhiemVus");
                 });
 
             modelBuilder.Entity("HutechNovel.Models.NoiDungChuong", b =>
@@ -443,40 +623,6 @@ namespace HutechNovel.Migrations
                     b.ToTable("TacGias");
                 });
 
-            modelBuilder.Entity("HutechNovel.Models.NhatKyQuanTri", b =>
-                {
-                    b.Property<int>("MaNhatKy")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MaNhatKy"));
-
-                    b.Property<string>("DoiTuong")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("HanhDong")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("MaDoiTuong")
-                        .HasColumnType("int");
-
-                    b.Property<string>("MaNguoiDung")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("NgayTao")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("NoiDung")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("MaNhatKy");
-
-                    b.ToTable("NhatKyQuanTris");
-                });
-
             modelBuilder.Entity("HutechNovel.Models.The", b =>
                 {
                     b.Property<int>("MaThe")
@@ -524,6 +670,45 @@ namespace HutechNovel.Migrations
                         .IsUnique();
 
                     b.ToTable("TheoDoiTruyens");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.TienTrinhLeech", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MaTruyen")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NgayBatDau")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("NgayKetThuc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SoChuongDaCao")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ThongBaoLoi")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TrangThai")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UrlHienTai")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MaTruyen");
+
+                    b.ToTable("TienTrinhLeeches");
                 });
 
             modelBuilder.Entity("HutechNovel.Models.Truyen", b =>
@@ -799,6 +984,25 @@ namespace HutechNovel.Migrations
                     b.Navigation("Truyen");
                 });
 
+            modelBuilder.Entity("HutechNovel.Models.BinhLuanCamXuc", b =>
+                {
+                    b.HasOne("HutechNovel.Models.BinhLuan", "BinhLuan")
+                        .WithMany()
+                        .HasForeignKey("MaBinhLuan")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HutechNovel.Models.ApplicationUser", "NguoiDung")
+                        .WithMany()
+                        .HasForeignKey("MaNguoiDung")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("BinhLuan");
+
+                    b.Navigation("NguoiDung");
+                });
+
             modelBuilder.Entity("HutechNovel.Models.Chuong", b =>
                 {
                     b.HasOne("HutechNovel.Models.Truyen", "Truyen")
@@ -886,6 +1090,25 @@ namespace HutechNovel.Migrations
                     b.Navigation("NguoiDung");
                 });
 
+            modelBuilder.Entity("HutechNovel.Models.LichSuNhiemVu", b =>
+                {
+                    b.HasOne("HutechNovel.Models.NhiemVu", "NhiemVu")
+                        .WithMany("LichSuNhiemVus")
+                        .HasForeignKey("MaNhiemVu")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HutechNovel.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NhiemVu");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HutechNovel.Models.LuotXem", b =>
                 {
                     b.HasOne("HutechNovel.Models.ApplicationUser", "NguoiDung")
@@ -930,6 +1153,17 @@ namespace HutechNovel.Migrations
                         .IsRequired();
 
                     b.Navigation("NguoiDung");
+
+                    b.Navigation("Truyen");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.TienTrinhLeech", b =>
+                {
+                    b.HasOne("HutechNovel.Models.Truyen", "Truyen")
+                        .WithMany()
+                        .HasForeignKey("MaTruyen")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Truyen");
                 });
@@ -1071,6 +1305,11 @@ namespace HutechNovel.Migrations
                     b.Navigation("LichSuDocs");
 
                     b.Navigation("NoiDungChuongs");
+                });
+
+            modelBuilder.Entity("HutechNovel.Models.NhiemVu", b =>
+                {
+                    b.Navigation("LichSuNhiemVus");
                 });
 
             modelBuilder.Entity("HutechNovel.Models.TacGia", b =>

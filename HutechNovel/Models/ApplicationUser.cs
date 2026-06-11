@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 
@@ -25,6 +25,8 @@ namespace HutechNovel.Models
         public int SoBinhLuan { get; set; } = 0;
         public int SoPhutDaDoc { get; set; } = 0;
         public int VeDaySach { get; set; } = 0;
+        public int HutechXu { get; set; } = 0;
+        public int DiemKinhNghiem { get; set; } = 0;
         public DateTime? NgayDiemDanhCuoi { get; set; }
         public string CaiDatMauNen { get; set; } = "Light";
         public string CaiDatFontChu { get; set; } = "Arial";

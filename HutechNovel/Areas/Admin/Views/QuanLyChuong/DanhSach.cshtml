@@ -21,9 +21,20 @@
                 <h1 class="page-title" style="margin: 0;">@Model.Story.TieuDe</h1>
             </div>
         </div>
-        <a class="btn-admin" asp-action="ThemChuong" asp-route-maTruyen="@Model.Story.MaTruyen">
-            <i class="fas fa-plus"></i> Đăng chương mới
-        </a>
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <a class="btn-admin" style="background-color: #10b981; border-color: #10b981;" asp-action="ThemNhieuChuong" asp-route-maTruyen="@Model.Story.MaTruyen" title="Đăng nhiều file .txt">
+                <i class="fas fa-file-upload"></i> Upload Hàng Loạt
+            </a>
+            <a class="btn-admin" style="background-color: #f59e0b; border-color: #f59e0b;" asp-action="ThemGallery" asp-route-maTruyen="@Model.Story.MaTruyen" title="Đăng truyện tranh (Gallery)">
+                <i class="fas fa-images"></i> Đăng Gallery
+            </a>
+            <a class="btn-admin" style="background-color: #8b5cf6; border-color: #8b5cf6;" href="@Url.Action("Index", "Leech", new { area = "Admin", maTruyen = Model.Story.MaTruyen })">
+                <i class="fas fa-robot"></i> Auto Leech
+            </a>
+            <a class="btn-admin" asp-action="ThemChuong" asp-route-maTruyen="@Model.Story.MaTruyen">
+                <i class="fas fa-plus"></i> Đăng 1 chương
+            </a>
+        </div>
     </div>
 </section>
 
@@ -41,11 +52,26 @@
         <tbody>
             @foreach (var chapter in Model.Chapters)
             {
-                <tr>
-                    <td>@chapter.SoChuong</td>
-                    <td>@chapter.TieuDe</td>
+                <tr data-id="@chapter.MaChuong" data-sochuong="@chapter.SoChuong">
                     <td>
-                        <span class="status-chip">@ChapterStatusText(chapter.TrangThai)</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-grip-vertical text-muted drag-handle" style="cursor: grab; font-size: 1.2rem; padding-right: 8px;"></i>
+                            @if (chapter.LaPhuChuong)
+                            {
+                                <span class="badge bg-secondary" title="Vị trí: @chapter.SoChuong">Phụ chương</span>
+                            }
+                            else
+                            {
+                                <span>@chapter.SoChuong</span>
+                            }
+                        </div>
+                    </td>
+                    <td class="inline-edit-title" data-id="@chapter.MaChuong" title="Nhấp đúp để sửa" style="cursor: pointer;">@chapter.TieuDe</td>
+                    <td>
+                        <div class="form-check form-switch" style="margin-bottom: 0;">
+                            <input class="form-check-input status-toggle" type="checkbox" id="status_@chapter.MaChuong" data-id="@chapter.MaChuong" @(chapter.TrangThai == TrangThaiChuong.DaXuatBan ? "checked" : "") @(chapter.TrangThai == TrangThaiChuong.HenGio ? "disabled" : "") title="Chuyển trạng thái">
+                            <label class="form-check-label status-label" for="status_@chapter.MaChuong">@(ChapterStatusText(chapter.TrangThai))</label>
+                        </div>
                         @if (chapter.TrangThai == TrangThaiChuong.HenGio && chapter.NgayHenGio.HasValue)
                         {
                             <div class="muted small mt-1">@chapter.NgayHenGio.Value.ToString("dd/MM/yyyy HH:mm")</div>
@@ -102,12 +128,11 @@
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
-
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var deleteModal = document.getElementById('deleteChapterModal');
@@ -124,6 +149,158 @@
                     
                     modalTitle.textContent = '"' + chapterTitle + '"';
                     hiddenInput.value = chapterId;
+                });
+            }
+
+            // Inline Edit Title
+            document.querySelectorAll('.inline-edit-title').forEach(cell => {
+                cell.addEventListener('dblclick', function() {
+                    if (this.querySelector('input')) return;
+                    let currentTitle = this.textContent.trim();
+                    let maChuong = this.getAttribute('data-id');
+                    
+                    let input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control form-control-sm';
+                    input.value = currentTitle;
+                    
+                    this.textContent = '';
+                    this.appendChild(input);
+                    input.focus();
+                    
+                    input.addEventListener('blur', async () => {
+                        let newTitle = input.value.trim();
+                        if (newTitle && newTitle !== currentTitle) {
+                            try {
+                                const formData = new FormData();
+                                formData.append('maChuong', maChuong);
+                                formData.append('tieuDe', newTitle);
+                                
+                                const response = await fetch('@Url.Action("CapNhatTieuDeNhanh", "QuanLyChuong", new { area = "Admin" })', {
+                                    method: 'POST',
+                                    body: formData
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                    this.textContent = newTitle;
+                                } else {
+                                    this.textContent = currentTitle;
+                                    alert(result.message);
+                                }
+                            } catch (e) {
+                                this.textContent = currentTitle;
+                            }
+                        } else {
+                            this.textContent = currentTitle;
+                        }
+                    });
+                    
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') {
+                            input.value = currentTitle;
+                            input.blur();
+                        }
+                    });
+                });
+            });
+
+            // Toggle Status
+            document.querySelectorAll('.status-toggle').forEach(toggle => {
+                toggle.addEventListener('change', async function() {
+                    let maChuong = this.getAttribute('data-id');
+                    let label = this.nextElementSibling;
+                    try {
+                        const response = await fetch('@Url.Action("DoiTrangThaiNhanh", "QuanLyChuong", new { area = "Admin" })', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: 'maChuong=' + maChuong
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            label.textContent = result.isPublished ? "Đã đăng" : "Bản nháp";
+                            this.checked = result.isPublished;
+                        } else {
+                            this.checked = !this.checked;
+                            alert(result.message);
+                        }
+                    } catch (e) {
+                        this.checked = !this.checked;
+                        alert("Có lỗi xảy ra");
+                    }
+                });
+            });
+
+            var el = document.querySelector('table tbody');
+            if (el) {
+                new Sortable(el, {
+                    handle: '.drag-handle',
+                    animation: 150,
+                    ghostClass: 'bg-light',
+                    onEnd: async function (evt) {
+                        if (evt.oldIndex === evt.newIndex) return;
+
+                        // Lấy dòng bị kéo và dòng tại vị trí mới TRƯỚC KHI bị kéo vào (tức là dòng bị đẩy đi)
+                        const itemEl = evt.item;
+                        const maChuong = itemEl.getAttribute('data-id');
+                        
+                        // Lấy tất cả các dòng hiện tại theo thứ tự mới trên giao diện
+                        const rows = Array.from(el.querySelectorAll('tr'));
+                        
+                        // Để tìm SoChuong mục tiêu, ta nhìn vào data-sochuong của các dòng khác.
+                        // Vì danh sách sắp xếp giảm dần (Chương lớn ở trên), nếu ta thả vào evt.newIndex
+                        // Ta có thể lấy SoChuongMoi từ dòng ngay trên nó hoặc dưới nó.
+                        let soChuongMoi = 0;
+                        
+                        if (evt.newIndex < evt.oldIndex) {
+                            // Kéo lên trên: lấy data-sochuong của dòng mà nó chiếm chỗ (dòng bị đẩy xuống dưới)
+                            soChuongMoi = parseInt(rows[evt.newIndex + 1].getAttribute('data-sochuong'));
+                        } else {
+                            // Kéo xuống dưới: lấy data-sochuong của dòng mà nó chiếm chỗ (dòng bị đẩy lên trên)
+                            soChuongMoi = parseInt(rows[evt.newIndex - 1].getAttribute('data-sochuong'));
+                        }
+
+                        if (!soChuongMoi || soChuongMoi < 1) {
+                            alert("Không thể xác định số chương mới.");
+                            window.location.reload();
+                            return;
+                        }
+
+                        try {
+                            const formData = new FormData();
+                            formData.append('maChuong', maChuong);
+                            formData.append('soChuongMoi', soChuongMoi);
+
+                            const targetUrl = '@Url.Action("DoiSoChuong", "QuanLyChuong", new { area = "Admin" })';
+                            console.log("Gửi tới URL:", targetUrl, "MaChuong:", maChuong, "SoChuongMoi:", soChuongMoi);
+
+                            const response = await fetch(targetUrl, {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (!response.ok) {
+                                const text = await response.text();
+                                alert(`Lỗi HTTP ${response.status}: ${text.substring(0, 150)}`);
+                                window.location.reload();
+                                return;
+                            }
+
+                            const result = await response.json();
+                            if (result.success) {
+                                window.location.reload();
+                            } else {
+                                alert(result.message || "Có lỗi xảy ra");
+                                window.location.reload();
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            alert("Lỗi JavaScript/Mạng: " + error.message);
+                            window.location.reload();
+                        }
+                    }
                 });
             }
         });

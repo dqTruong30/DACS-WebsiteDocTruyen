@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Identity
 @using HutechNovel.Models
+@using HutechNovel.Helpers
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -9,21 +10,49 @@
     {
         var currentUser = await UserManager.GetUserAsync(User);
         var avatarUrl = !string.IsNullOrWhiteSpace(currentUser?.Avatar) ? currentUser.Avatar : null;
+        var displayName = !string.IsNullOrWhiteSpace(currentUser?.HoTen)
+            ? currentUser.HoTen
+            : UserManager.GetUserName(User);
         
+        var cultivation = currentUser != null ? CultivationHelper.CalculateCultivation(currentUser) : null;
+
         <details class="user-menu">
-            <summary class="user-menu__trigger">
+            <summary class="user-menu__trigger" style="align-items: center;">
                 @if (avatarUrl != null)
                 {
-                    <img src="@avatarUrl" alt="Avatar" class="user-menu__avatar" />
+                    <img src="@avatarUrl" alt="Avatar" class="user-menu__avatar" style="border-color: @(cultivation?.MauSac ?? "var(--public-border)");" />
                 }
                 else
                 {
-                    <span class="user-menu__avatar user-menu__avatar--fallback">@((UserManager.GetUserName(User) ?? "U").Substring(0, 1).ToUpper())</span>
+                    <span class="user-menu__avatar user-menu__avatar--fallback" style="border-color: @(cultivation?.MauSac ?? "var(--public-border)"); color: @(cultivation?.MauSac ?? "inherit");">@((displayName ?? "U").Substring(0, 1).ToUpper())</span>
                 }
-                <span class="auth-link auth-link--plain">@UserManager.GetUserName(User)</span>
+                
+                <div class="d-flex flex-column justify-content-center" style="line-height: 1.2; align-items: flex-end;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="auth-link auth-link--plain" style="margin:0; padding:0;">@displayName</span>
+                        @if (currentUser != null)
+                        {
+                            <span class="badge bg-warning text-dark rounded-pill" style="font-size: 0.7rem;" title="HutechXu">
+                                <i class="fas fa-coins"></i> @currentUser.HutechXu
+                            </span>
+                        }
+                    </div>
+                    @if (cultivation != null)
+                    {
+                        <div style="font-size: 0.72rem; color: @cultivation.MauSac; font-weight: 800; margin-top: 0.15rem; text-shadow: 0 0 8px @(cultivation.MauSac)40;">
+                            @cultivation.TenCanhGioi <span style="opacity:0.8; font-weight:600">@cultivation.TieuCanhGioi</span>
+                        </div>
+                        <div style="height: 3px; background: rgba(255,255,255,0.1); margin-top: 2px; border-radius: 2px; overflow: hidden; width: 100%;">
+                            <div style="height: 100%; width: @(cultivation.PhanTramTieuCanhGioi.ToString(System.Globalization.CultureInfo.InvariantCulture))%; background-color: @cultivation.MauSac; box-shadow: 0 0 8px @cultivation.MauSac;"></div>
+                        </div>
+                    }
+                </div>
             </summary>
             
             <div class="user-menu__dropdown">
+                <a asp-area="" asp-controller="NhiemVu" asp-action="Index" style="color: var(--public-accent);">
+                    <i class="fas fa-tasks me-2"></i> Nhiệm vụ & Điểm danh
+                </a>
                 <a asp-area="" asp-controller="NguoiDung" asp-action="DanhSachTheoDoi">Danh sách theo dõi</a>
                 <a asp-area="" asp-controller="NguoiDung" asp-action="TuTruyen" asp-fragment="history-panel">Lịch sử đọc truyện</a>
                 <a asp-area="Identity" asp-page="/Account/Manage/Index">Quản lý tài khoản</a>

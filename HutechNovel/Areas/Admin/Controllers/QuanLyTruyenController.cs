@@ -314,6 +314,22 @@ namespace HutechNovel.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DoiTrangThaiTruyenNhanh(int maTruyen, TrangThaiTruyen trangThai)
+        {
+            var userId = _userManager.GetUserId(User);
+            var truyen = await _context.Truyens
+                .FirstOrDefaultAsync(t => t.MaTruyen == maTruyen && (t.NguoiDangId == userId || User.IsInRole("Admin")));
+
+            if (truyen == null) return Json(new { success = false, message = "Không tìm thấy truyện hoặc không có quyền." });
+
+            truyen.TrangThai = trangThai;
+            truyen.NgayCapNhat = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
         // ─── Helpers ────────────────────────────────────────────────────────────
 
         private async Task ProcessNovelData(

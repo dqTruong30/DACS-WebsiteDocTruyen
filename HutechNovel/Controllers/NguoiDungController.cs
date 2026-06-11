@@ -193,9 +193,12 @@ namespace HutechNovel.Controllers
             return viewModel;
         }
 
+#pragma warning disable CS0162
         [HttpPost]
         public async Task<IActionResult> DiemDanh()
         {
+            return RedirectToAction("Index", "NhiemVu");
+
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
@@ -216,6 +219,7 @@ namespace HutechNovel.Controllers
 
             return RedirectToAction(nameof(HoSo));
         }
+#pragma warning restore CS0162
 
         [HttpPost]
         public async Task<IActionResult> LuuCaiDat(string mauNen, string fontChu, int coChu)
