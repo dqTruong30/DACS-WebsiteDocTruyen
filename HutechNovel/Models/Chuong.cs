@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -22,6 +22,8 @@ namespace HutechNovel.Models
 
         // [MỚI] Trạng thái xuất bản
         public TrangThaiChuong TrangThai { get; set; } = TrangThaiChuong.DaXuatBan;
+
+        public bool LaPhuChuong { get; set; } = false;
 
         public int MaTruyen { get; set; }
         [ForeignKey("MaTruyen")]

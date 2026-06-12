@@ -234,14 +234,14 @@ namespace HutechNovel.Areas.Admin.Controllers
             // 2. Cập nhật hoặc Thêm mới Nội dung Raw
             var rawEntity = chuong.NoiDungChuongs.FirstOrDefault(n => n.LoaiNoiDung == LoaiNoiDungChuong.BanGoc);
             if (rawEntity != null)
-                rawEntity.NoiDung = noiDungRaw;
+                rawEntity.NoiDung = noiDungRaw ?? string.Empty;
             else if (!string.IsNullOrWhiteSpace(noiDungRaw))
                 _context.NoiDungChuongs.Add(new NoiDungChuong { MaChuong = maChuong, NoiDung = noiDungRaw, LoaiNoiDung = LoaiNoiDungChuong.BanGoc });
 
             // 3. Cập nhật hoặc Thêm mới Nội dung Convert
             var textEntity = chuong.NoiDungChuongs.FirstOrDefault(n => n.LoaiNoiDung == LoaiNoiDungChuong.BanDich);
             if (textEntity != null)
-                textEntity.NoiDung = noiDungText;
+                textEntity.NoiDung = noiDungText ?? string.Empty;
             else if (!string.IsNullOrWhiteSpace(noiDungText))
                 _context.NoiDungChuongs.Add(new NoiDungChuong { MaChuong = maChuong, NoiDung = noiDungText, LoaiNoiDung = LoaiNoiDungChuong.BanDich });
 

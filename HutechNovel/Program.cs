@@ -70,13 +70,19 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 
 // 2.5. Cấu hình Đăng nhập bằng Google
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
+var authBuilder = builder.Services.AddAuthentication();
+var googleAuthNSection = builder.Configuration.GetSection("Authentication:Google");
+var clientId = googleAuthNSection["ClientId"];
+var clientSecret = googleAuthNSection["ClientSecret"];
+
+if (!string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret))
+{
+    authBuilder.AddGoogle(options =>
     {
-        IConfigurationSection googleAuthNSection = builder.Configuration.GetSection("Authentication:Google");
-        options.ClientId = googleAuthNSection["ClientId"] ?? string.Empty;
-        options.ClientSecret = googleAuthNSection["ClientSecret"] ?? string.Empty;
+        options.ClientId = clientId;
+        options.ClientSecret = clientSecret;
     });
+}
 
 
 
