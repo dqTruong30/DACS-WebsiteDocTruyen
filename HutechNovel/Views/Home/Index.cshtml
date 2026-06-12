@@ -577,10 +577,17 @@
 </section>
 
 <section class="panel mb-4">
-    <div class="section-kicker">Dựa trên gu đọc của bạn</div>
-    <h2 class="section-title mb-4">Có thể bạn thích</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <div class="section-kicker">Gợi ý cho bạn</div>
+            <h2 class="section-title m-0">Có thể bạn thích</h2>
+        </div>
+        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#tuChinhGuDocModal">
+            <i class="fas fa-sliders-h me-1"></i> Tùy chỉnh gu đọc
+        </button>
+    </div>
     <div class="grid-4-cols">
-        @foreach (var story in Model.SmartRecommendations.Take(4))
+        @foreach (var story in Model.SmartRecommendations.Take(8))
         {
             <article class="story-card story-card--hoverable">
                 <a asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@story.MaTruyen" class="story-card__media">
@@ -633,6 +640,66 @@
         }
     </div>
 </section>
+
+<!-- Modal Tùy chỉnh gu đọc -->
+<div class="modal fade" id="tuChinhGuDocModal" tabindex="-1" aria-labelledby="tuChinhGuDocModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--public-surface); border: 1px solid var(--public-border); color: var(--public-text);">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title text-success fw-bold" id="tuChinhGuDocModalLabel">Tùy chỉnh gu đọc truyện</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formGuDoc">
+                    <!-- Thói quen tìm kiếm gần đây -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold"><i class="fas fa-history me-1"></i>THÓI QUEN TÌM KIẾM GẦN ĐÂY</label>
+                        <div id="searchHabitsContainer" class="d-flex flex-wrap gap-2 mt-1">
+                            @{
+                                var habitsCookie = Context.Request.Cookies["UserSearchHabits"] ?? "";
+                                var habitsList = habitsCookie.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                                string FormatHabitText(string h)
+                                {
+                                    if (h.StartsWith("kw:")) return "Từ khóa: " + h.Substring(3);
+                                    if (h.StartsWith("author:")) return "Tác giả: " + h.Substring(7);
+                                    if (h.StartsWith("summary:")) return "Nội dung: " + h.Substring(8);
+                                    if (h.StartsWith("status:0")) return "Đang tiến hành";
+                                    if (h.StartsWith("status:1")) return "Hoàn thành";
+                                    if (h.StartsWith("status:2")) return "Tạm ngưng";
+                                    if (h.StartsWith("views:")) return "Lượt xem >= " + h.Substring(6);
+                                    if (h.StartsWith("chapters:")) return "Chương >= " + h.Substring(9);
+                                    if (h.StartsWith("tag:")) return "Thể loại: " + h.Substring(4);
+                                    return h;
+                                }
+
+                                if(habitsList.Any()){
+                                    foreach(var h in habitsList){
+                                        var displayTxt = FormatHabitText(h);
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-habit rounded-pill px-3 mb-2" data-keyword="@h" data-display="@displayTxt"><i class="fas fa-plus me-1"></i>@displayTxt</button>
+                                    }
+                                } else {
+                                    <span class="text-muted small">Chưa có dữ liệu tìm kiếm.</span>
+                                }
+                            }
+                        </div>
+                    </div>
+                    
+                    <!-- Từ khóa yêu thích hiện tại -->
+                    <div class="mb-2">
+                        <label class="form-label text-muted small fw-bold"><i class="fas fa-heart me-1"></i>TỪ KHÓA YÊU THÍCH</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" id="favoriteKeywordsInput" name="keywords" value="@Context.Request.Cookies["UserFavoriteKeywords"]" placeholder="Ví dụ: Tiên hiệp, Đô thị, Hệ thống...">
+                        <div class="form-text text-muted small mt-2">Nhập các thể loại, tên truyện hoặc tác giả bạn thích (cách nhau bởi dấu phẩy).</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" id="btnLuuGuDoc">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script>
@@ -738,6 +805,55 @@
                         this.disabled = false;
                     }
                 });
+            });
+
+            // === LOGIC TÙY CHỈNH GU ĐỌC ===
+            document.querySelectorAll('.btn-habit').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const kw = this.getAttribute('data-keyword');
+                    const displayTxt = this.getAttribute('data-display') || kw;
+                    const input = document.getElementById('favoriteKeywordsInput');
+                    let currentVals = input.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                    if(!currentVals.includes(kw)){
+                        currentVals.push(kw);
+                        input.value = currentVals.join(', ');
+                        
+                        // Hiệu ứng visual
+                        this.classList.remove('btn-outline-secondary');
+                        this.classList.add('btn-success', 'text-white', 'border-success');
+                        this.innerHTML = `<i class="fas fa-check me-1"></i>${displayTxt}`;
+                    }
+                });
+            });
+
+            document.getElementById('btnLuuGuDoc')?.addEventListener('click', async function() {
+                const keywords = document.getElementById('favoriteKeywordsInput').value;
+                const form = new FormData();
+                form.append('keywords', keywords);
+
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang lưu...';
+                btn.disabled = true;
+
+                try {
+                    const response = await fetch('/Home/SaveFavoriteKeywords', {
+                        method: 'POST',
+                        body: form
+                    });
+                    if(response.ok){
+                        window.location.reload(); // Tải lại trang để áp dụng gợi ý mới
+                    } else {
+                        alert('Có lỗi xảy ra khi lưu.');
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert('Lỗi kết nối.');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
             });
         });
     </script>

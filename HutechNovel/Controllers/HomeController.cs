@@ -103,79 +103,159 @@ namespace HutechNovel.Controllers
             return View(vm);
         }
 
+        [HttpPost]
+        public IActionResult SaveFavoriteKeywords([FromForm] string keywords)
+        {
+            if (string.IsNullOrWhiteSpace(keywords))
+            {
+                Response.Cookies.Delete("UserFavoriteKeywords");
+            }
+            else
+            {
+                var cookieOptions = new CookieOptions { Expires = DateTime.Now.AddDays(30), Path = "/" };
+                Response.Cookies.Append("UserFavoriteKeywords", keywords, cookieOptions);
+            }
+            return Json(new { success = true });
+        }
+
         private async Task<List<Truyen>> BuildSmartRecommendations(string userId, int take)
         {
-            var readStoryIds = await _context.LichSuDocs
-                .Where(x => x.MaNguoiDung == userId)
-                .Select(x => x.Chuong.MaTruyen)
-                .ToListAsync();
+            // 1. Lấy từ khóa yêu thích từ Cookie
+            var favKeywords = Request.Cookies["UserFavoriteKeywords"];
+            var favList = string.IsNullOrEmpty(favKeywords) 
+                ? new List<string>() 
+                : favKeywords.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(k => k.Trim().ToLower()).ToList();
 
-            var likedStoryIds = await _context.YeuThichs
-                .Where(x => x.MaNguoiDung == userId)
-                .Select(x => x.MaTruyen)
-                .ToListAsync();
+            // 2. Lấy thói quen tìm kiếm từ Cookie
+            var searchHabits = Request.Cookies["UserSearchHabits"];
+            var searchList = string.IsNullOrEmpty(searchHabits) 
+                ? new List<string>() 
+                : searchHabits.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(k => k.Trim().ToLower()).ToList();
 
-            var followedStoryIds = await _context.TheoDoiTruyens
-                .Where(x => x.MaNguoiDung == userId)
-                .Select(x => x.MaTruyen)
-                .ToListAsync();
+            var combinedKeywords = favList.Concat(searchList).Distinct().ToList();
 
-            var bookmarkedStoryIds = await _context.DanhDaus
-                .Where(x => x.MaNguoiDung == userId)
-                .Select(x => x.MaTruyen)
-                .ToListAsync();
-
-            var knownStoryIds = readStoryIds
-                .Concat(likedStoryIds)
-                .Concat(followedStoryIds)
-                .Concat(bookmarkedStoryIds)
-                .Distinct()
-                .ToList();
-
-            var preferredTagIds = knownStoryIds.Any()
-                ? await _context.Truyens
-                    .Where(t => knownStoryIds.Contains(t.MaTruyen))
-                    .SelectMany(t => t.Thes.Select(tag => tag.MaThe))
-                    .Distinct()
-                    .ToListAsync()
-                : new List<int>();
-
-            if (!preferredTagIds.Any())
+            // 3. Lấy dữ liệu cũ (Lịch sử, Yêu thích, Theo dõi...) để lấy Tags
+            List<int> preferredTagIds = new List<int>();
+            if (!string.IsNullOrEmpty(userId))
             {
-                return await _context.Truyens
-                    .Include(t => t.TacGia)
-                    .Include(t => t.Thes)
-                    .OrderByDescending(t => t.DiemTrending)
-                    .ThenByDescending(t => t.NgayCapNhat)
-                    .Take(take)
-                    .ToListAsync();
+                var readStoryIds = await _context.LichSuDocs.Where(x => x.MaNguoiDung == userId).Select(x => x.Chuong.MaTruyen).ToListAsync();
+                var likedStoryIds = await _context.YeuThichs.Where(x => x.MaNguoiDung == userId).Select(x => x.MaTruyen).ToListAsync();
+                var followedStoryIds = await _context.TheoDoiTruyens.Where(x => x.MaNguoiDung == userId).Select(x => x.MaTruyen).ToListAsync();
+                var bookmarkedStoryIds = await _context.DanhDaus.Where(x => x.MaNguoiDung == userId).Select(x => x.MaTruyen).ToListAsync();
+
+                var knownStoryIds = readStoryIds.Concat(likedStoryIds).Concat(followedStoryIds).Concat(bookmarkedStoryIds).Distinct().ToList();
+
+                if (knownStoryIds.Any())
+                {
+                    preferredTagIds = await _context.Truyens
+                        .Where(t => knownStoryIds.Contains(t.MaTruyen))
+                        .SelectMany(t => t.Thes.Select(tag => tag.MaThe))
+                        .Distinct()
+                        .ToListAsync();
+                }
             }
 
-            var rankedIds = await _context.Truyens
-                .Where(t => !knownStoryIds.Contains(t.MaTruyen) && t.Thes.Any(tag => preferredTagIds.Contains(tag.MaThe)))
-                .Select(t => new
-                {
-                    t.MaTruyen,
-                    Score = t.Thes.Count(tag => preferredTagIds.Contains(tag.MaThe)),
-                    t.TongLuotXem,
-                    t.NgayCapNhat
-                })
-                .OrderByDescending(t => t.Score)
-                .ThenByDescending(t => t.TongLuotXem)
-                .ThenByDescending(t => t.NgayCapNhat)
-                .Take(take)
-                .ToListAsync();
+            // Nếu không có thói quen, không có tag, trả về truyện ngẫu nhiên hoặc top trending
+            if (!combinedKeywords.Any() && !preferredTagIds.Any())
+            {
+                var defaultStories = await _context.Truyens
+                    .Include(t => t.TacGia)
+                    .Include(t => t.Thes)
+                    .Where(t => t.TrangThai != TrangThaiTruyen.TamNgung)
+                    .OrderByDescending(t => t.DiemTrending)
+                    .Take(50)
+                    .ToListAsync();
+                return ShuffleAndTake(defaultStories, take, userId);
+            }
 
-            var ids = rankedIds.Select(x => x.MaTruyen).ToList();
-            var stories = await _context.Truyens
+            // Tìm truyện phù hợp dựa trên từ khóa (Tên truyện, tác giả, tag) HOẶC preferred tags
+            var query = _context.Truyens
                 .Include(t => t.TacGia)
                 .Include(t => t.Thes)
-                .Where(t => ids.Contains(t.MaTruyen))
-                .ToListAsync();
+                .AsNoTracking();
 
-            return stories
-                .OrderBy(t => ids.IndexOf(t.MaTruyen))
-                .ToList();
+            var matchingStories = await query.ToListAsync();
+
+            var scoredStories = matchingStories.Select(t => new
+            {
+                Story = t,
+                Score = CalculateScore(t, combinedKeywords, preferredTagIds)
+            })
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Story.DiemTrending)
+            .Take(50)
+            .Select(x => x.Story)
+            .ToList();
+
+            // Nếu không đủ, bù thêm truyện top
+            if (scoredStories.Count < take)
+            {
+                var excludeIds = scoredStories.Select(s => s.MaTruyen).ToList();
+                var fillStories = await _context.Truyens
+                    .Include(t => t.TacGia)
+                    .Include(t => t.Thes)
+                    .Where(t => !excludeIds.Contains(t.MaTruyen))
+                    .OrderByDescending(t => t.DiemTrending)
+                    .Take(take - scoredStories.Count)
+                    .ToListAsync();
+                scoredStories.AddRange(fillStories);
+            }
+
+            return ShuffleAndTake(scoredStories, take, userId);
+        }
+
+        private int CalculateScore(Truyen t, List<string> keywords, List<int> preferredTagIds)
+        {
+            int score = 0;
+            // Chấm điểm theo Tag DB (1 điểm mỗi tag)
+            score += t.Thes.Count(tag => preferredTagIds.Contains(tag.MaThe));
+
+            var lowerTitle = t.TieuDe?.ToLower() ?? "";
+            var lowerAuthor = t.TacGia?.TenTacGia?.ToLower() ?? "";
+            
+            foreach(var kw in keywords)
+            {
+                if (kw.StartsWith("author:")) { 
+                    if (lowerAuthor.Contains(kw.Substring(7))) score += 2; 
+                }
+                else if (kw.StartsWith("summary:")) { 
+                    if (t.MoTa?.ToLower().Contains(kw.Substring(8)) == true) score += 1; 
+                }
+                else if (kw.StartsWith("status:")) { 
+                    if (int.TryParse(kw.Substring(7), out int st) && (int)t.TrangThai == st) score += 2; 
+                }
+                else if (kw.StartsWith("views:")) { 
+                    if (int.TryParse(kw.Substring(6), out int v) && t.TongLuotXem >= v) score += 2; 
+                }
+                else if (kw.StartsWith("chapters:")) { 
+                    if (int.TryParse(kw.Substring(9), out int c) && t.TongSoChuong >= c) score += 2; 
+                }
+                else if (kw.StartsWith("tag:")) { 
+                    var tagName = kw.Substring(4).ToLower();
+                    if (t.Thes.Any(tag => tag.TenThe.ToLower() == tagName)) score += 2; 
+                }
+                else if (kw.StartsWith("kw:")) { 
+                     var term = kw.Substring(3);
+                     if (lowerTitle.Contains(term) || lowerAuthor.Contains(term)) score += 2;
+                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(term))) score += 1;
+                }
+                else {
+                     // Tương thích ngược với các keyword tự do user nhập tay
+                     if (lowerTitle.Contains(kw) || lowerAuthor.Contains(kw)) score += 2;
+                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(kw))) score += 1;
+                }
+            }
+            return score;
+        }
+
+        private List<Truyen> ShuffleAndTake(List<Truyen> source, int take, string userId)
+        {
+            // Seed cố định cho mỗi ngày kết hợp User ID (hoặc IP)
+            int seed = DateTime.Today.DayOfYear ^ (userId?.GetHashCode() ?? 0);
+            var rng = new Random(seed);
+            
+            return source.OrderBy(x => rng.Next()).Take(take).ToList();
         }
     }
 }

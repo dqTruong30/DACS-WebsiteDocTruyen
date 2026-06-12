@@ -80,6 +80,42 @@ namespace HutechNovel.Controllers
             var startOfToday = DateTime.Today;
             var startOfWeek = startOfToday.AddDays(-6);
 
+            // MỚI: Thu thập TOÀN BỘ thói quen tìm kiếm và mã hóa
+            var currentHabits = Request.Cookies["UserSearchHabits"];
+            var habitsList = string.IsNullOrEmpty(currentHabits) 
+                ? new List<string>() 
+                : currentHabits.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            var newHabits = new List<string>();
+            if (!string.IsNullOrWhiteSpace(keyword)) newHabits.Add($"kw:{keyword.Trim()}");
+            if (!string.IsNullOrWhiteSpace(author)) newHabits.Add($"author:{author.Trim()}");
+            if (!string.IsNullOrWhiteSpace(summary)) newHabits.Add($"summary:{summary.Trim()}");
+            if (status.HasValue) newHabits.Add($"status:{status.Value}");
+            if (minViews.HasValue) newHabits.Add($"views:{minViews.Value}");
+            if (minChapters.HasValue) newHabits.Add($"chapters:{minChapters.Value}");
+
+            var tagIdsToCollect = new List<int>();
+            if (selectedTagId.HasValue) tagIdsToCollect.Add(selectedTagId.Value);
+            if (selectedCustomTagIds != null) tagIdsToCollect.AddRange(selectedCustomTagIds);
+            
+            if (tagIdsToCollect.Any()) 
+            {
+                var tagNames = await _context.Thes.Where(t => tagIdsToCollect.Contains(t.MaThe)).Select(t => t.TenThe).ToListAsync();
+                foreach (var tag in tagNames) newHabits.Add($"tag:{tag}");
+            }
+
+            if (newHabits.Any())
+            {
+                foreach(var h in newHabits) 
+                {
+                    habitsList.RemoveAll(x => x.Equals(h, StringComparison.OrdinalIgnoreCase));
+                    habitsList.Insert(0, h);
+                }
+                if (habitsList.Count > 15) habitsList = habitsList.Take(15).ToList();
+                var cookieOptions = new CookieOptions { Expires = DateTime.Now.AddDays(30), Path = "/" };
+                Response.Cookies.Append("UserSearchHabits", string.Join(",", habitsList), cookieOptions);
+            }
+
             var query = _context.Truyens.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(keyword))

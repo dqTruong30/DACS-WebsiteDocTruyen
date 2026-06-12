@@ -2,13 +2,23 @@
 
 @{
     ViewData["Title"] = $"Chương {Model.Chapter.SoChuong}";
-    var displayContent = Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "";
+    bool hasRaw = !string.IsNullOrWhiteSpace(Model.RawContent?.NoiDung);
+    bool hasConv = !string.IsNullOrWhiteSpace(Model.ConvertedContent?.NoiDung);
+    
+    var rawContent = Model.RawContent?.NoiDung;
+    var convContent = Model.ConvertedContent?.NoiDung;
+    if (!hasRaw && hasConv) rawContent = convContent;
+    if (!hasConv && hasRaw) convContent = rawContent;
+    
+    var displayContent = hasConv ? convContent : (rawContent ?? "");
+    var activeMode = hasConv ? "converted" : "raw";
 }
 
 <style>
     /* Chuyển đổi màu sắc mượt mà bất chấp Theme hệ thống */
     .reader-page {
         transition: background-color 0.3s ease, color 0.3s ease;
+        padding-bottom: 70px;
     }
 
     .reader-main-card {
@@ -79,41 +89,11 @@
     .theme-public .btn-ghost.reader-chapter-disabled,
     .theme-public .btn-neon.reader-chapter-disabled,
     .reader-chapter-disabled {
-        opacity: 1 !important;
+        opacity: 0.4 !important;
         filter: grayscale(1);
         cursor: not-allowed !important;
-        background: #8f8f8f !important;
-        border-color: #8f8f8f !important;
-        color: #ffffff !important;
         box-shadow: none !important;
-        pointer-events: auto !important;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
-    }
-
-    .theme-public .reader-chapter-disabled:hover,
-    .theme-public .reader-chapter-disabled:focus,
-    .theme-public .reader-chapter-disabled:active,
-    .theme-public .btn-ghost.reader-chapter-disabled:hover,
-    .theme-public .btn-ghost.reader-chapter-disabled:focus,
-    .theme-public .btn-ghost.reader-chapter-disabled:active,
-    .theme-public .btn-neon.reader-chapter-disabled:hover,
-    .theme-public .btn-neon.reader-chapter-disabled:focus,
-    .theme-public .btn-neon.reader-chapter-disabled:active,
-    .reader-chapter-disabled:hover,
-    .reader-chapter-disabled:focus,
-    .reader-chapter-disabled:active {
-        background: #8f8f8f !important;
-        border-color: #8f8f8f !important;
-        color: #ffffff !important;
-        opacity: 1 !important;
-        box-shadow: none !important;
-        transform: none !important;
-    }
-
-    .reader-chapter-disabled i,
-    .reader-chapter-disabled span {
-        color: #ffffff !important;
-        opacity: 1 !important;
+        pointer-events: none !important;
     }
 
     @@media (max-width: 768px) {
@@ -134,6 +114,105 @@
         .btn-warning:hover {
             background: #e09900 !important;
         }
+
+    /* ── TTS Mini Player (Sticky Bottom) ─────────────────────────────────── */
+    #ttsMiniplayer {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 1050;
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.55rem 1.2rem 0.65rem;
+        background: rgba(12, 12, 12, 0.94);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+        border-top: 1px solid rgba(255,255,255,0.07);
+        color: #f1f1f1;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #ttsMiniplayer.is-visible { transform: translateY(0); }
+    .tts-mp-info { flex: 1; min-width: 0; overflow: hidden; }
+    .tts-mp-title {
+        display: block; font-size: 0.72rem; font-weight: 700;
+        color: var(--public-green, #35ff61);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tts-mp-chapter {
+        display: block; font-size: 0.68rem; opacity: 0.6;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tts-mp-controls, .tts-mp-extras { display: flex; align-items: center; gap: 0.2rem; }
+    .tts-mp-controls button, .tts-mp-extras button {
+        background: none; border: none; color: #f1f1f1;
+        padding: 0.45rem 0.6rem; border-radius: 6px;
+        cursor: pointer; font-size: 0.9rem;
+        transition: background 0.15s, color 0.15s;
+    }
+    .tts-mp-controls button:hover, .tts-mp-extras button:hover { background: rgba(255,255,255,0.1); }
+    #mpPlayPause { font-size: 1.15rem; padding: 0.45rem 0.75rem; color: var(--public-green, #35ff61); }
+    .tts-mp-extras button.is-active { color: var(--public-green, #35ff61); }
+    #mpTimerLabel { font-size: 0.65rem; margin-left: 2px; font-variant-numeric: tabular-nums; }
+    .tts-mp-progressbar {
+        position: absolute; bottom: 0; left: 0;
+        height: 2px; background: var(--public-green, #35ff61);
+        transition: width 0.4s ease; pointer-events: none;
+    }
+    /* Resume banner */
+    #ttsResumeBanner {
+        background: var(--public-surface-2); border: 1px solid var(--public-border);
+        border-radius: 8px; padding: 0.55rem 0.85rem;
+        display: flex; align-items: center; gap: 0.5rem; font-size: 0.83rem;
+    }
+    /* Preset buttons */
+    .preset-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .btn-preset {
+        padding: 0.28rem 0.65rem; border-radius: 20px;
+        border: 1px solid var(--public-border);
+        background: var(--public-surface-2); color: var(--public-text);
+        font-size: 0.76rem; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-preset:hover { border-color: var(--public-green); color: var(--public-green); }
+    .btn-preset.is-active {
+        background: var(--public-green); color: #111;
+        border-color: var(--public-green); font-weight: 700;
+    }
+    /* Google TTS paragraph highlight */
+    .reader-sentence.is-reading {
+        border-left: 3px solid var(--public-green);
+        background: rgba(53, 255, 97, 0.10);
+        padding-left: 0.35rem;
+        box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    }
+    @@media (max-width: 576px) {
+        .tts-mp-info { display: none; }
+        #mpTimerLabel { display: none; }
+    }
+
+    /* Offcanvas Theme Support */
+    .reader-offcanvas {
+        background-color: var(--public-surface-2) !important;
+        color: var(--public-text) !important;
+    }
+    
+    .reader-input {
+        background-color: var(--public-surface-1) !important;
+        color: var(--public-text) !important;
+        border: 1px solid rgba(128, 128, 128, 0.3) !important;
+    }
+
+    .reader-input::placeholder {
+        color: var(--public-text);
+        opacity: 0.6;
+    }
+
+    .reader-list-item {
+        background-color: transparent !important;
+        color: var(--public-text) !important;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.3) !important;
+    }
+
+    body.theme-reader-black .btn-close, 
+    body.theme-reader-dark .btn-close,
+    .theme-dark .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
 </style>
 
 <section class="reader-page" id="readerPage">
@@ -157,17 +236,12 @@
                    asp-controller="DocTruyen" asp-action="Index"
                    asp-route-maTruyen="@Model.Chapter.MaTruyen"
                    asp-route-soChuong="@Model.PreviousChapterNumber">
-                <i class="fas fa-chevron-left me-1"></i>Trước
+                <i class="fas fa-chevron-left me-1"></i>Chương trước
             </a>
             <a class="btn-ghost" asp-controller="Truyen" asp-action="ChiTiet" asp-route-id="@Model.Chapter.MaTruyen">Mục lục</a>
-            <a id="btnNextChapterTop" class="btn-neon @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
-                   data-empty-chapter="@(!Model.NextChapterNumber.HasValue)"
-                   aria-disabled="@(!Model.NextChapterNumber.HasValue)"
-                   asp-controller="DocTruyen" asp-action="Index"
-                   asp-route-maTruyen="@Model.Chapter.MaTruyen"
-                   asp-route-soChuong="@Model.NextChapterNumber">
-                Sau<i class="fas fa-chevron-right ms-1"></i>
-            </a>
+            <a id="btnNextChapterTop" class="btn-ghost @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")" 
+               href="@(Model.NextChapterNumber.HasValue ? Url.Action("Index", "DocTruyen", new { maTruyen = Model.Chapter.MaTruyen, soChuong = Model.NextChapterNumber.Value }) : "#")"
+               @(Model.NextChapterNumber.HasValue ? "" : "data-empty-chapter=\"true\"")>Chương sau<i class="fas fa-chevron-right ms-2"></i></a>
         </nav>
 
         <article id="readingContent" class="reader-content reader-content-live">
@@ -181,18 +255,20 @@
                    asp-action="Index" asp-route-maTruyen="@Model.Chapter.MaTruyen" asp-route-soChuong="@Model.PreviousChapterNumber">
                 <i class="fas fa-chevron-left me-1"></i>Chương trước
             </a>
-            <a id="btnNextChapterBottom" class="btn-neon @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")"
-                   data-empty-chapter="@(!Model.NextChapterNumber.HasValue)"
-                   aria-disabled="@(!Model.NextChapterNumber.HasValue)"
-                   asp-action="Index" asp-route-maTruyen="@Model.Chapter.MaTruyen" asp-route-soChuong="@Model.NextChapterNumber">
-                Chương sau<i class="fas fa-chevron-right ms-1"></i>
-            </a>
+            <a id="btnNextChapterBottom" class="btn-ghost @(Model.NextChapterNumber.HasValue ? "" : "disabled reader-chapter-disabled")" 
+               href="@(Model.NextChapterNumber.HasValue ? Url.Action("Index", "DocTruyen", new { maTruyen = Model.Chapter.MaTruyen, soChuong = Model.NextChapterNumber.Value }) : "#")"
+               @(Model.NextChapterNumber.HasValue ? "" : "data-empty-chapter=\"true\"")>Chương sau<i class="fas fa-chevron-right ms-2"></i></a>
         </nav>
 
         <div class="reader-switches justify-content-center mt-4">
-            <button class="btn-pill" type="button" data-content-mode="raw">Bản gốc (Raw)</button>
-            <button class="btn-pill is-active" type="button" data-content-mode="converted">Bản convert</button>
+            <button class="btn-pill @(activeMode == "raw" ? "is-active" : "") @(hasRaw ? "" : "disabled opacity-50")" 
+                    type="button" data-content-mode="raw" 
+                    @(hasRaw ? "" : "disabled title=\"Chưa có bản gốc\"")>Bản gốc (Raw)</button>
+            <button class="btn-pill @(activeMode == "converted" ? "is-active" : "") @(hasConv ? "" : "disabled opacity-50")" 
+                    type="button" data-content-mode="converted" 
+                    @(hasConv ? "" : "disabled title=\"Chưa có bản convert\"")>Bản convert</button>
         </div>
+
     </div>
 </section>
 
@@ -212,16 +288,16 @@
 </div>
 
 <!-- PANEL SỬA NAME (REPLACE TEXT) -->
-<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="replaceTextPanel" style="background-color: var(--public-surface-2); color: var(--public-text);">
-    <div class="offcanvas-header border-bottom border-secondary">
+<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="replaceTextPanel">
+    <div class="offcanvas-header border-bottom" style="border-color: rgba(128,128,128,0.3) !important;">
         <h5 class="offcanvas-title fw-bold">Từ điển cá nhân</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body d-flex flex-column gap-3">
         <p class="small text-muted mb-0">Thay thế các từ không ưng ý (Ví dụ: tiểu tử &rarr; thằng nhóc). Chỉ áp dụng riêng cho truyện này và lưu trên máy của bạn.</p>
         <form id="addReplaceNameForm" class="d-flex flex-column gap-2">
-            <input type="text" id="originalWord" class="form-control bg-dark text-light border-secondary" placeholder="Từ gốc (cần thay)" required />
-            <input type="text" id="replacementWord" class="form-control bg-dark text-light border-secondary" placeholder="Thay bằng..." required />
+            <input type="text" id="originalWord" class="form-control reader-input" placeholder="Từ gốc (cần thay)" required />
+            <input type="text" id="replacementWord" class="form-control reader-input" placeholder="Thay bằng..." required />
             <button type="submit" class="btn-neon mt-1 w-100" style="padding: 0.5rem;">Thêm quy tắc</button>
         </form>
         <hr class="border-secondary my-1" />
@@ -234,20 +310,20 @@
 
 
 <!-- PANEL MỤC LỤC -->
-<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="tocPanel" style="background-color: var(--public-surface-2); color: var(--public-text);">
-    <div class="offcanvas-header border-bottom border-secondary">
+<div class="offcanvas offcanvas-start reader-offcanvas" tabindex="-1" id="tocPanel">
+    <div class="offcanvas-header border-bottom" style="border-color: rgba(128,128,128,0.3) !important;">
         <h5 class="offcanvas-title fw-bold">Mục lục nhanh</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body p-0 d-flex flex-column">
-        <div class="p-3 border-bottom border-secondary" style="position: sticky; top: 0; background-color: var(--public-surface-2); z-index: 10;">
-            <input type="text" id="quickTocSearch" class="form-control bg-dark text-light border-secondary" placeholder="Tìm theo số hoặc tên chương..." />
+        <div class="p-3 border-bottom" style="position: sticky; top: 0; background-color: var(--public-surface-2); z-index: 10; border-color: rgba(128,128,128,0.3) !important;">
+            <input type="text" id="quickTocSearch" class="form-control reader-input" placeholder="Tìm theo số hoặc tên chương..." />
         </div>
         <div class="list-group list-group-flush" id="quickTocList" style="overflow-y: auto;">
             @foreach (var ch in Model.Chapters.OrderBy(c => c.SoChuong))
             {
                 <a href="@Url.Action("Index", "DocTruyen", new { maTruyen = Model.Chapter.MaTruyen, soChuong = ch.SoChuong })" 
-                   class="list-group-item list-group-item-action bg-transparent text-light border-secondary @(ch.MaChuong == Model.Chapter.MaChuong ? "active fw-bold text-success" : "")">
+                   class="list-group-item list-group-item-action reader-list-item @(ch.MaChuong == Model.Chapter.MaChuong ? "active fw-bold text-success" : "")">
                     @(ch.LaPhuChuong ? "Phụ chương" : $"Chương {ch.SoChuong}"): @ch.TieuDe
                 </a>
             }
@@ -257,14 +333,17 @@
 
 <!-- PANEL CÀI ĐẶT GIAO DIỆN -->
 <div class="offcanvas offcanvas-end reader-offcanvas" tabindex="-1" id="readerSettings">
-    <div class="offcanvas-header border-bottom border-secondary">
+    <div class="offcanvas-header border-bottom" style="border-color: rgba(128,128,128,0.3) !important;">
         <h5 class="offcanvas-title fw-bold">Cài đặt đọc truyện</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body">
         <div class="setting-group">
             <label>Bảng màu giao diện</label>
             <div class="setting-swatches flex-wrap">
+                <button class="swatch border border-secondary" style="background: linear-gradient(135deg, #ffffff 50%, #1a1a1a 50%); position: relative; overflow: hidden;" data-bg="sync" data-text="sync" title="Đồng bộ (Sáng/Tối)">
+                    <i class="fas fa-sync-alt position-absolute top-50 start-50 translate-middle text-secondary" style="opacity: 0.5;"></i>
+                </button>
                 <button class="swatch" style="background:#ffffff" data-bg="#ffffff" data-text="#1a1a1a" title="Trắng"></button>
                 <button class="swatch" style="background:#f4ecd8" data-bg="#f4ecd8" data-text="#332b21" title="Giấy vàng"></button>
                 <button class="swatch" style="background:#1a1a1a" data-bg="#1a1a1a" data-text="#e7e2d8" title="Đen tuyền"></button>
@@ -314,41 +393,81 @@
 
 <!-- PANEL TEXT TO SPEECH -->
 <div class="offcanvas offcanvas-end reader-offcanvas tts-offcanvas" tabindex="-1" id="ttsPanel">
-    <div class="offcanvas-header border-bottom border-secondary">
-        <h5 class="offcanvas-title fw-bold">Máy đọc truyện (TTS)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    <div class="offcanvas-header border-bottom" style="border-color: rgba(128,128,128,0.3) !important;">
+        <h5 class="offcanvas-title fw-bold">Máy đọc truyện (TTS) <small class="fw-normal opacity-50" style="font-size:0.7rem;">Google TTS</small></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
-    <div class="offcanvas-body">
-        
-        <div class="setting-group mb-3">
-            <label>Giọng đọc (Tự động cập nhật):</label>
-            <select id="ttsVoice" class="field-select" style="font-size: 0.9rem;"></select>
+    <div class="offcanvas-body d-flex flex-column gap-3">
+
+        <!-- Resume Banner -->
+        <div id="ttsResumeBanner" hidden>
+            <i class="fas fa-history text-success"></i>
+            <span>Nghe tiếp từ đoạn <strong id="resumeBlockLabel">?</strong>?</span>
+            <button id="btnResumeYes"  class="btn-neon ms-auto py-0 px-2" style="font-size:0.8rem;">Nghe tiếp</button>
+            <button id="btnResumeDismiss" class="btn-ghost py-0 px-2"   style="font-size:0.8rem;">Bỏ qua</button>
         </div>
 
-        <div class="tts-controls d-flex align-items-center mb-3">
-            <button id="ttsPrev" class="btn-ghost" type="button" title="Lùi lại 1 đoạn" style="padding: 0.6rem 1rem;"><i class="fas fa-backward-step"></i></button>
+        <!-- Cài đặt giọng đọc (Đóng gói) -->
+        <details class="tts-advanced-settings p-2 rounded" style="background: var(--public-surface-1); border: 1px solid var(--public-border);">
+            <summary class="fw-bold" style="cursor: pointer; font-size: 0.9rem; user-select: none;">
+                <i class="fas fa-sliders-h me-2 text-success"></i>Tùy chỉnh giọng đọc & Tốc độ
+            </summary>
+            <div class="mt-3 d-flex flex-column gap-3">
+                <!-- Language -->
+                <div class="setting-group mb-0">
+                    <label>Ngôn ngữ đọc:</label>
+                    <select id="ttsLang" class="field-select" style="font-size:0.9rem;">
+                        <option value="auto" selected>✨ Tự động nhận diện</option>
+                        <option value="vi">🇻🇳 Tiếng Việt</option>
+                        <option value="zh-CN">🇨🇳 Tiếng Trung (Giản thể)</option>
+                        <option value="zh-TW">🇹🇼 Tiếng Trung (Phồn thể)</option>
+                        <option value="en">🇺🇸 Tiếng Anh</option>
+                        <option value="ja">🇯🇵 Tiếng Nhật</option>
+                        <option value="ko">🇰🇷 Tiếng Hàn</option>
+                    </select>
+                </div>
+
+                <!-- Presets -->
+                <div class="setting-group mb-0">
+                    <label>Chế độ giọng đọc:</label>
+                    <div class="preset-pills">
+                        <button class="btn-preset is-active" data-preset="normal">Bình thường</button>
+                        <button class="btn-preset" data-preset="slow">Chậm rãi</button>
+                        <button class="btn-preset" data-preset="dramatic">Kịch tính</button>
+                        <button class="btn-preset" data-preset="cultivation">Tu luyện</button>
+                        <button class="btn-preset" data-preset="latenight">Đêm khuya</button>
+                    </div>
+                </div>
+
+                <!-- Rate -->
+                <div class="setting-group mb-0">
+                    <label>Tốc độ: <span id="ttsRateValue" class="text-success fw-bold">1.0</span></label>
+                    <input type="range" id="ttsRate" class="form-range" min="0.5" max="2.0" step="0.05" value="1" />
+                </div>
+            </div>
+        </details>
+
+        <!-- Controls -->
+        <div class="tts-controls d-flex align-items-center">
+            <button id="ttsPrev" class="btn-ghost" type="button" title="Lùi 1 đoạn" style="padding:0.6rem 1rem;"><i class="fas fa-backward-step"></i></button>
             <button id="ttsPlayPause" class="btn-neon flex-grow-1" type="button"><i class="fas fa-play me-1"></i>Đọc ngay</button>
-            <button id="ttsNext" class="btn-ghost" type="button" title="Tiến tới 1 đoạn" style="padding: 0.6rem 1rem;"><i class="fas fa-forward-step"></i></button>
-            <button id="ttsStop" class="btn-ghost" type="button" title="Dừng hẳn" style="padding: 0.6rem 1rem;"><i class="fas fa-stop"></i></button>
+            <button id="ttsNext" class="btn-ghost" type="button" title="Tiến 1 đoạn" style="padding:0.6rem 1rem;"><i class="fas fa-forward-step"></i></button>
+            <button id="ttsStop" class="btn-ghost" type="button" title="Dừng hẳn" style="padding:0.6rem 1rem;"><i class="fas fa-stop"></i></button>
         </div>
 
-        <div class="setting-group mb-3">
-            <label>Tốc độ đọc: <span id="ttsRateValue" class="text-success fw-bold">1.0</span></label>
-            <input type="range" id="ttsRate" class="form-range" min="0.5" max="2.0" step="0.1" value="1" />
-        </div>
-
-        <div class="d-flex gap-2 mb-3 align-items-center p-2 rounded" style="background: var(--public-surface-2); border: 1px solid var(--public-border);">
-            <label class="mb-0 fw-bold" style="white-space: nowrap;">Nhảy đến đoạn:</label>
-            <input type="number" id="ttsJumpInput" class="field text-center" style="width: 70px; padding: 0.3rem;" min="1" placeholder="VD: 5" />
+        <!-- Jump to -->
+        <div class="d-flex gap-2 align-items-center p-2 rounded" style="background:var(--public-surface-2);border:1px solid var(--public-border);">
+            <label class="mb-0 fw-bold" style="white-space:nowrap;font-size:0.85rem;">Nhảy đến đoạn:</label>
+            <input type="number" id="ttsJumpInput" class="field text-center" style="width:70px;padding:0.3rem;" min="1" placeholder="VD: 5" />
             <button id="ttsJumpBtn" class="btn-neon py-1 px-3">Đi</button>
         </div>
-
-        <div id="ttsStatus" class="status-banner is-success">Đang chờ lệnh...</div>
-        <div id="sentenceList" class="sentence-list mt-3"></div>
+        <div id="sentenceList" class="sentence-list mt-1"></div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="~/js/tts-engine.js"></script>
+    <script src="~/js/tts-ui.js"></script>
     <script>
         (() => {
             const content = document.getElementById("readingContent");
@@ -376,8 +495,14 @@
             });
             
             // Xử lý dữ liệu raw từ Server: Ép thẻ xuống dòng thành chuỗi text có ký tự \n
-            const serverRaw = @Json.Serialize(Model.RawContent?.NoiDung ?? "");
-            const serverConv = @Json.Serialize(Model.ConvertedContent?.NoiDung ?? Model.RawContent?.NoiDung ?? "");
+            let serverRawStr = @Json.Serialize(Model.RawContent?.NoiDung ?? "");
+            let serverConvStr = @Json.Serialize(Model.ConvertedContent?.NoiDung ?? "");
+            
+            if (!serverRawStr && serverConvStr) serverRawStr = serverConvStr;
+            if (!serverConvStr && serverRawStr) serverConvStr = serverRawStr;
+            
+            const serverRaw = serverRawStr;
+            const serverConv = serverConvStr;
             
             // Replace Text (Sửa Name) Logic variables
             const maTruyen = @Model.Chapter.MaTruyen;
@@ -391,8 +516,20 @@
             
             // Hàm chuyển đổi nội dung thành HTML với cấu trúc chia đoạn <p>
             function processTextToHTML(text) {
-                let cleanText = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<p>/gi, '');
-                let paragraphs = cleanText.split('\n').map(p => p.trim()).filter(p => p !== "");
+                // Chuyển thẻ ngắt dòng thành \n để tách đoạn
+                let cleanText = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<p[^>]*>/gi, '');
+                
+                let paragraphs = cleanText.split('\n').map(p => p.trim()).filter(p => {
+                    if (p === "") return false;
+                    // Nếu có thẻ img thì giữ lại
+                    if (p.toLowerCase().includes("<img")) return true;
+                    // Kiểm tra xem nội dung chữ (sau khi bỏ HTML tags và giải mã entities) có rỗng không
+                    let tempDiv = document.createElement("div");
+                    tempDiv.innerHTML = p;
+                    let textOnly = tempDiv.textContent || tempDiv.innerText || "";
+                    // Regex \s bao gồm cả khoảng trắng thường, \u00A0 (nbsp) và \u3000 (khoảng trắng fullwidth)
+                    return textOnly.replace(/[\s\u00A0\u3000]+/g, '').length > 0;
+                });
                 return paragraphs;
             }
 
@@ -416,17 +553,11 @@
             // Khởi chạy lúc đầu
             applyTextReplacements();
 
-            // "ttsBlocks" chứa các ĐOẠN VĂN (Paragraph) nguyên vẹn để đọc 1 mạch
+            // "ttsBlocks" chứa các ĐOẠN VĂN (Paragraph) nguyên vẹn để TTS đọc
             let ttsBlocks = [];
-            let currentIndex = 0;
-            let utterance = null;
             let recenterTimer = null;
-            let voices = [];
-            
-            // Quản lý trạng thái TTS tùy chỉnh
-            let isPlayingState = false;
-            let isCancelling = false;
-            let resumeFixTimer = null;
+            let currentTTSBlock = 0;   // Index đoạn hiện tại (sync với TTSEngine)
+            let ttsState = 'stopped';  // 'playing' | 'paused' | 'stopped'
 
             // 1. CHUẨN BỊ NỘI DUNG VÀ TÁCH ĐOẠN ĐỂ TTS ĐỌC
             function prepareBlocks() {
@@ -441,7 +572,13 @@
                     let trimmed = p.trim();
                     if (!trimmed) return "";
                     
-                    ttsBlocks.push(trimmed);
+                    // Trích xuất chữ thuần túy (bỏ thẻ img, b, i...) cho máy đọc TTS
+                    let tempDiv = document.createElement("div");
+                    tempDiv.innerHTML = trimmed;
+                    let textOnly = tempDiv.textContent || tempDiv.innerText || "";
+                    
+                    ttsBlocks.push(textOnly.trim());
+                    
                     let span = `<span class="reader-sentence" id="block-${globalIndex}" data-index="${globalIndex}">${trimmed}</span>`;
                     globalIndex++;
                     
@@ -451,25 +588,21 @@
                 content.innerHTML = htmlOutput;
                 renderBlockList();
                 restoreReadingPositionOnce();
-                
-                if (voices.length > 0) {
-                    populateVoices();
-                }
+                initTTSEngine(); // Cập nhật engine với blocks mới
             }
 
             // In danh sách ra bên ngoài Panel TTS
             function renderBlockList() {
                 const list = document.getElementById("sentenceList");
+                if (!list) return;
                 list.innerHTML = ttsBlocks.map((block, index) => {
                     let preview = block.length > 90 ? block.substring(0, 90) + "..." : block;
                     return `<button type="button" class="text-start" data-jump="${index}"><b>Đoạn ${index + 1}:</b> ${preview}</button>`;
                 }).join("");
                 
-                // Khi bấm vào đoạn chữ trong list -> Phát đọc ngay lập tức đoạn đó
                 list.querySelectorAll("[data-jump]").forEach(button => {
                     button.addEventListener("click", () => {
-                        let targetIdx = Number(button.dataset.jump);
-                        speak(targetIdx);
+                        TTSEngine.play(Number(button.dataset.jump));
                     });
                 });
             }
@@ -547,6 +680,7 @@
                 form.append("maChuong", chapterId);
                 form.append("viTriDoc", JSON.stringify(snapshot));
 
+
                 if (useBeacon && navigator.sendBeacon) {
                     navigator.sendBeacon("/api/TuongTac/LuuViTriDoc", form);
                     return;
@@ -565,109 +699,15 @@
                 savePositionTimer = setTimeout(() => saveReadingPositionNow(false), 1200);
             }
 
-            // 2. TEXT TO SPEECH (TTS) VOICES LOGIC
-            function populateVoices() {
-                voices = window.speechSynthesis.getVoices();
-                if (!voices || voices.length === 0) return;
+            // ── 2. TTS ENGINE v2 (Google Translate TTS) ────────────────────────────
+            const VOICE_PRESETS = {
+                normal:      { rate: 1.0  },
+                slow:        { rate: 0.75 },
+                dramatic:    { rate: 1.15 },
+                cultivation: { rate: 1.3  },
+                latenight:   { rate: 0.85 }
+            };
 
-                const voiceSelect = document.getElementById("ttsVoice");
-                if (!voiceSelect) return;
-                
-                voiceSelect.innerHTML = ''; // Xóa sạch danh sách cũ
-
-                let bestVi = null; let maxViScore = -1;
-                let bestZh = null; let maxZhScore = -1;
-
-                voices.forEach(voice => {
-                    const vLang = (voice.lang || "").toLowerCase();
-                    const vName = (voice.name || "").toLowerCase();
-
-                    // Chấm điểm tìm Vua Tiếng Việt (Đã fix lỗi bắt nhầm chữ)
-                    if (vLang.startsWith('vi') || vName.includes('vietnamese') || vName.includes('tiếng việt') || vName.includes('microsoft hoaimy') || vName.includes('microsoft an')) {
-                        let score = 1; // Điểm nền
-                        if (vName.includes('google')) score += 10;
-                        if (vName.includes('hoaimy') || vName.includes('microsoft an')) score += 9;
-                        if (vName.includes('linh') || vName.includes('quynh')) score += 8;
-                        if (voice.localService) score += 5;
-                        
-                        if (score > maxViScore) { maxViScore = score; bestVi = voice; }
-                    }
-
-                    // Chấm điểm tìm Vua Tiếng Trung
-                    if (vLang.startsWith('zh') || vName.includes('chinese') || vName.includes('xiaoxiao') || vName.includes('yunxi')) {
-                        let score = 1;
-                        if (vName.includes('google')) score += 10;
-                        if (vName.includes('xiaoxiao') || vName.includes('yunxi')) score += 9;
-                        if (voice.localService) score += 5;
-                        
-                        if (score > maxZhScore) { maxZhScore = score; bestZh = voice; }
-                    }
-                });
-
-                // Chỉ đưa đúng 2 giọng này vào giao diện cho gọn
-                if (bestVi) {
-                    let optVi = document.createElement('option');
-                    optVi.value = bestVi.name;
-                    optVi.textContent = `🇻🇳 Tiếng Việt (${bestVi.name})`;
-                    voiceSelect.appendChild(optVi);
-                }
-                
-                if (bestZh) {
-                    let optZh = document.createElement('option');
-                    optZh.value = bestZh.name;
-                    optZh.textContent = `🇨🇳 Tiếng Trung (${bestZh.name})`;
-                    voiceSelect.appendChild(optZh);
-                }
-
-                // Cảnh báo nếu thiết bị hoàn toàn không có Tiếng Việt/Trung
-                if (!bestVi && !bestZh) {
-                    let optFallback = document.createElement('option');
-                    optFallback.value = voices[0].name;
-                    optFallback.textContent = `Mặc định hệ thống (${voices[0].name})`;
-                    voiceSelect.appendChild(optFallback);
-                    console.warn("Máy tính/Điện thoại này chưa cài đặt gói ngôn ngữ Tiếng Việt hoặc Tiếng Trung.");
-                }
-
-                autoSelectVoice();
-            }
-
-            function autoSelectVoice() {
-                const voiceSelect = document.getElementById("ttsVoice");
-                if (!voiceSelect || voiceSelect.options.length === 0) return;
-
-                const rawBtn = document.querySelector('[data-content-mode="raw"]');
-                const rawMode = rawBtn ? rawBtn.classList.contains("is-active") : false;
-
-                let targetOpt = Array.from(voiceSelect.options).find(opt => {
-                    return rawMode ? opt.textContent.includes('Tiếng Trung') : opt.textContent.includes('Tiếng Việt');
-                });
-
-                if (targetOpt) {
-                    voiceSelect.value = targetOpt.value;
-                } else {
-                    voiceSelect.value = voiceSelect.options[0].value;
-                }
-                
-                if (typeof utterance !== 'undefined' && utterance) {
-                    utterance.lang = rawMode ? "zh-CN" : "vi-VN";
-                }
-            }
-            // Lắng nghe sự kiện load giọng đọc của trình duyệt
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = populateVoices;
-            }
-            
-            // Fallback quét giọng thủ công (Bảo hiểm cho Chrome)
-            let voiceRetryCount = 0;
-            let voiceInterval = setInterval(() => {
-                if (voices.length > 0 || voiceRetryCount > 10) {
-                    clearInterval(voiceInterval);
-                } else {
-                    populateVoices();
-                    voiceRetryCount++;
-                }
-            }, 500);
-            
             function scrollToBlock(index, instant = false) {
                 const target = document.getElementById(`block-${index}`);
                 if (!target) return;
@@ -677,150 +717,137 @@
             function highlightBlock(index) {
                 document.querySelectorAll(".reader-sentence.is-reading").forEach(el => el.classList.remove("is-reading"));
                 document.querySelectorAll(".sentence-list .is-reading").forEach(el => el.classList.remove("is-reading"));
-                
                 document.getElementById(`block-${index}`)?.classList.add("is-reading");
-                
                 let listBtn = document.querySelector(`[data-jump="${index}"]`);
                 if (listBtn) {
                     listBtn.classList.add("is-reading");
                     listBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
                 }
-
                 clearTimeout(recenterTimer);
                 recenterTimer = setTimeout(() => scrollToBlock(index), 1500);
             }
 
-            // 3. XỬ LÝ NÚT PLAY / PAUSE
-            const btnPlayPause = document.getElementById("ttsPlayPause");
-            
+            // ── 3. PLAY/PAUSE UI ──────────────────────────────────────────────────────
             function updatePlayPauseUI(isPlaying) {
-                isPlayingState = isPlaying;
+                const btn = document.getElementById("ttsPlayPause");
+                if (!btn) return;
                 if (isPlaying) {
-                    btnPlayPause.innerHTML = '<i class="fas fa-pause me-1"></i>Tạm dừng';
-                    btnPlayPause.classList.remove("btn-neon");
-                    btnPlayPause.classList.add("btn-warning");
+                    btn.innerHTML = '<i class="fas fa-pause me-1"></i>Tạm dừng';
+                    btn.classList.remove("btn-neon"); btn.classList.add("btn-warning");
                 } else {
-                    btnPlayPause.innerHTML = '<i class="fas fa-play me-1"></i>Đọc tiếp';
-                    btnPlayPause.classList.remove("btn-warning");
-                    btnPlayPause.classList.add("btn-neon");
+                    btn.innerHTML = '<i class="fas fa-play me-1"></i>Đọc tiếp';
+                    btn.classList.remove("btn-warning"); btn.classList.add("btn-neon");
                 }
             }
 
-            function cancelSpeech() {
-                isCancelling = true;
-                window.speechSynthesis.cancel();
-                if (resumeFixTimer) clearInterval(resumeFixTimer);
-            }
+            function initTTSEngine() {
+                const langSel = document.getElementById('ttsLang');
+                const lang = langSel?.value || 'vi';
+                const rate = Number(document.getElementById('ttsRate')?.value || 1.0);
 
-            function speak(index) {
-                if (!("speechSynthesis" in window) || !ttsBlocks.length) return;
-                
-                cancelSpeech();
-                
-                setTimeout(() => {
-                    isCancelling = false;
-                    if (index < 0 || index >= ttsBlocks.length) return;
-                    currentIndex = index;
-                    
-                    utterance = new SpeechSynthesisUtterance(ttsBlocks[currentIndex]);
-                    window.speechUtteranceChunk = utterance;
-
-                    const rawBtn = document.querySelector('[data-content-mode="raw"]');
-                    const rawMode = rawBtn ? rawBtn.classList.contains("is-active") : false;
-                    utterance.lang = rawMode ? "zh-CN" : "vi-VN";
-
-                    const selectedVoiceName = document.getElementById("ttsVoice").value;
-                    const voice = voices.find(v => v.name === selectedVoiceName);
-                    if (voice) {
-                        utterance.voice = voice;
-                    }
-
-                    utterance.rate = Number(document.getElementById("ttsRate").value);
-                    
-                    utterance.onstart = () => {
-                        highlightBlock(currentIndex);
-                        document.getElementById("ttsStatus").textContent = `Đang đọc đoạn ${currentIndex + 1}/${ttsBlocks.length}`;
-                        document.getElementById("ttsStatus").className = "status-banner is-success";
-                        
-                        if (resumeFixTimer) clearInterval(resumeFixTimer);
-                        resumeFixTimer = setInterval(() => {
-                            if (window.speechSynthesis.speaking && isPlayingState) {
-                                window.speechSynthesis.pause();
-                                window.speechSynthesis.resume();
-                            }
-                        }, 14000);
-                    };
-                    
-                    utterance.onend = () => {
-                        if (isCancelling) return;
-                        
-                        if (resumeFixTimer) clearInterval(resumeFixTimer);
-                        currentIndex += 1;
-                        
-                        if (currentIndex < ttsBlocks.length) {
-                            speak(currentIndex);
+                TTSEngine.init(ttsBlocks, {
+                    lang, rate,
+                    onBlockStart(blockIdx) {
+                        currentTTSBlock = blockIdx;
+                        ttsState = 'playing';
+                        highlightBlock(blockIdx);
+                        updatePlayPauseUI(true);
+                        const status = document.getElementById('ttsStatus');
+                        if (status) status.textContent = `Đang đọc đoạn ${blockIdx + 1}/${ttsBlocks.length}`;
+                        TTSMiniPlayer.onBlockStart(blockIdx);
+                    },
+                    onStateChange(isPlaying) {
+                        if (!isPlaying && ttsState === 'playing') ttsState = 'paused';
+                        updatePlayPauseUI(isPlaying);
+                        TTSMiniPlayer.onStateChange(isPlaying);
+                    },
+                    onChapterEnd() {
+                        ttsState = 'stopped';
+                        updatePlayPauseUI(false);
+                        TTSMiniPlayer.onChapterEnd();
+                        const nextBtn = document.getElementById('btnNextChapterBottom');
+                        if (nextBtn && !nextBtn.classList.contains('disabled')) {
+                            const status = document.getElementById('ttsStatus');
+                            if (status) status.textContent = 'Chuyển sang chương tiếp theo...';
+                            setTimeout(() => { window.location.href = nextBtn.href; }, 1200);
                         } else {
-                            const nextBtn = document.getElementById("btnNextChapterBottom");
-                            if (nextBtn && !nextBtn.classList.contains("disabled")) {
-                                document.getElementById("ttsStatus").textContent = "Chuyển sang chương tiếp theo...";
-                                window.location.href = nextBtn.href;
-                            } else {
-                                alert("Bạn đã đọc tới chương cuối cùng hiện có của quyển sách này!");
-                                document.getElementById("ttsStatus").textContent = "Đã hoàn thành quyển sách.";
-                                document.getElementById("ttsStatus").className = "status-banner is-warning";
-                                updatePlayPauseUI(false);
-                                currentIndex = 0;
-                            }
+                            const status = document.getElementById('ttsStatus');
+                            if (status) status.textContent = 'Đã đọc hết chương cuối!';
                         }
-                    };
-
-                    utterance.onerror = (e) => {
-                        if (isCancelling) return;
-                        if (resumeFixTimer) clearInterval(resumeFixTimer);
-                    };
-
-                    window.speechSynthesis.speak(utterance);
-                    updatePlayPauseUI(true);
-                }, 50);
+                    },
+                    onStop() {
+                        ttsState = 'stopped';
+                        updatePlayPauseUI(false);
+                        TTSMiniPlayer.onStop();
+                        document.querySelectorAll('.reader-sentence.is-reading')
+                            .forEach(el => el.classList.remove('is-reading'));
+                    }
+                });
             }
 
-            btnPlayPause.addEventListener("click", () => {
-                if (isPlayingState) {
-                    cancelSpeech();
-                    updatePlayPauseUI(false);
-                    document.getElementById("ttsStatus").textContent = "Đã tạm dừng. Bấm 'Đọc tiếp' để phát lại đoạn này.";
+            // ── Resume Banner ─────────────────────────────────────────────────────
+            document.getElementById('btnResumeYes')?.addEventListener('click', () => {
+                const lbl = document.getElementById('resumeBlockLabel');
+                const idx = lbl ? parseInt(lbl.textContent) - 1 : 0;
+                document.getElementById('ttsResumeBanner').hidden = true;
+                TTSEngine.play(idx);
+            });
+            document.getElementById('btnResumeDismiss')?.addEventListener('click', () => {
+                document.getElementById('ttsResumeBanner').hidden = true;
+                TTSMiniPlayer.clearResume();
+            });
+
+            // ── TTS Panel Buttons ────────────────────────────────────────────────
+            document.getElementById('ttsPlayPause').addEventListener('click', () => {
+                if (ttsState === 'playing') {
+                    TTSEngine.pause(); ttsState = 'paused';
+                    const s = document.getElementById('ttsStatus');
+                    if (s) s.textContent = 'Đã tạm dừng.';
+                } else if (ttsState === 'paused') {
+                    TTSEngine.resume(); ttsState = 'playing';
                 } else {
-                    speak(currentIndex);
+                    TTSEngine.play(currentTTSBlock);
                 }
             });
 
-            document.getElementById("ttsStop").addEventListener("click", () => {
-                cancelSpeech();
-                currentIndex = 0;
-                updatePlayPauseUI(false);
-                document.getElementById("ttsStatus").textContent = "Đã dừng. Sẵn sàng đọc lại từ đầu.";
-                document.querySelectorAll(".reader-sentence.is-reading, .sentence-list .is-reading").forEach(el => el.classList.remove("is-reading"));
+            document.getElementById('ttsStop').addEventListener('click', () => {
+                TTSEngine.stop();
+                currentTTSBlock = 0; ttsState = 'stopped';
+                const s = document.getElementById('ttsStatus');
+                if (s) s.textContent = 'Đã dừng. Sẵn sàng đọc lại từ đầu.';
             });
 
-            document.getElementById("ttsPrev").addEventListener("click", () => {
-                if (currentIndex > 0) speak(currentIndex - 1);
-            });
+            document.getElementById('ttsPrev').addEventListener('click', () => TTSEngine.prev());
+            document.getElementById('ttsNext').addEventListener('click', () => TTSEngine.next());
 
-            document.getElementById("ttsNext").addEventListener("click", () => {
-                if (currentIndex < ttsBlocks.length - 1) speak(currentIndex + 1);
-            });
-
-            document.getElementById("ttsJumpBtn").addEventListener("click", () => {
-                let val = parseInt(document.getElementById("ttsJumpInput").value);
+            document.getElementById('ttsJumpBtn').addEventListener('click', () => {
+                const val = parseInt(document.getElementById('ttsJumpInput').value);
                 if (!isNaN(val) && val >= 1 && val <= ttsBlocks.length) {
-                    speak(val - 1);
+                    TTSEngine.play(val - 1);
                 } else {
-                    alert(`Vui lòng nhập số đoạn hợp lệ từ 1 đến ${ttsBlocks.length}`);
+                    alert(`Nhập số từ 1 đến ${ttsBlocks.length}`);
                 }
             });
 
-            window.addEventListener("beforeunload", () => {
-                cancelSpeech();
+            document.getElementById('ttsRate').addEventListener('input', e => {
+                const rate = Number(e.target.value);
+                document.getElementById('ttsRateValue').textContent = rate.toFixed(1);
+                TTSEngine.setRate(rate);
+            });
+
+            document.getElementById('ttsLang').addEventListener('change', e => {
+                TTSEngine.setLang(e.target.value);
+            });
+
+            document.querySelectorAll('[data-preset]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('is-active'));
+                    btn.classList.add('is-active');
+                    const rate = VOICE_PRESETS[btn.dataset.preset]?.rate ?? 1.0;
+                    TTSEngine.setRate(rate);
+                    const slider = document.getElementById('ttsRate');
+                    if (slider) { slider.value = rate; document.getElementById('ttsRateValue').textContent = rate.toFixed(2); }
+                });
             });
 
             // 4. QUẢN LÝ GIAO DIỆN (THEMING)
@@ -846,10 +873,21 @@
             }
 
             function applySettings(settings) {
-                page.style.backgroundColor = settings.bg;
-                page.style.color = settings.text;
-                readerCard.style.color = settings.text;
-                content.style.color = settings.text;
+                if (settings.bg === "sync" || settings.text === "sync") {
+                    page.style.backgroundColor = "";
+                    page.style.color = "";
+                    readerCard.style.color = "";
+                    content.style.color = "";
+                    document.getElementById("customBg").value = "#000000";
+                    document.getElementById("customText").value = "#ffffff";
+                } else {
+                    page.style.backgroundColor = settings.bg;
+                    page.style.color = settings.text;
+                    readerCard.style.color = settings.text;
+                    content.style.color = settings.text;
+                    document.getElementById("customBg").value = settings.bg;
+                    document.getElementById("customText").value = settings.text;
+                }
                 
                 content.style.fontFamily = settings.font;
                 content.style.fontSize = `${settings.fontSize}px`;
@@ -863,8 +901,6 @@
                 document.getElementById("lineHeightValue").textContent = settings.lineHeight;
                 document.getElementById("paragraphGap").value = settings.paragraphGap;
                 document.getElementById("paragraphGapValue").textContent = `${settings.paragraphGap}px`;
-                document.getElementById("customBg").value = settings.bg;
-                document.getElementById("customText").value = settings.text;
             }
 
             async function saveReaderSettingsToAccount(settings) {
@@ -909,17 +945,16 @@
             document.getElementById("fontSize").addEventListener("input", e => saveSettings({ fontSize: Number(e.target.value) }));
             document.getElementById("lineHeight").addEventListener("input", e => saveSettings({ lineHeight: Number(e.target.value) }));
             document.getElementById("paragraphGap").addEventListener("input", e => saveSettings({ paragraphGap: Number(e.target.value) }));
-            document.getElementById("ttsRate").addEventListener("input", e => document.getElementById("ttsRateValue").textContent = Number(e.target.value).toFixed(1));
+            // (ttsRate listener đã được đăng ký trong phần TTS Engine v2 phía trên)
 
             // Switch chế độ Raw/Convert
             document.querySelectorAll("[data-content-mode]").forEach(button => {
                 button.addEventListener("click", () => {
                     document.querySelectorAll("[data-content-mode]").forEach(btn => btn.classList.remove("is-active"));
                     button.classList.add("is-active");
-                    cancelSpeech();
+                    TTSEngine.stop();
                     updatePlayPauseUI(false);
-                    prepareBlocks();
-                    populateVoices();
+                    prepareBlocks(); // initTTSEngine() được gọi bên trong
                 });
             });
 
@@ -1005,11 +1040,33 @@
 
             // Khởi động
             saveSettings(JSON.parse(localStorage.getItem(settingsKey) || "{}"));
-            prepareBlocks();
-            populateVoices();
+            prepareBlocks(); // initTTSEngine() được gọi bên trong
+
+            // Khởi tạo Mini Player (chỉ 1 lần)
+            TTSMiniPlayer.init(TTSEngine, {
+                chapterId:    chapterId,
+                totalBlocks:  ttsBlocks.length,
+                storyTitle:   @Json.Serialize(Model.Chapter.Truyen.TieuDe),
+                chapterTitle: @Json.Serialize($"Chương {Model.Chapter.SoChuong}: {Model.Chapter.TieuDe}")
+            });
+
+            // Kiểm tra Smart Resume
+            const resumeBlock = TTSMiniPlayer.checkResume();
+            if (resumeBlock !== null) {
+                const banner = document.getElementById('ttsResumeBanner');
+                if (banner) {
+                    banner.hidden = false;
+                    const lbl = document.getElementById('resumeBlockLabel');
+                    if (lbl) lbl.textContent = resumeBlock + 1;
+                }
+            }
+
             window.addEventListener("scroll", scheduleSaveReadingPosition, { passive: true });
             window.addEventListener("resize", scheduleSaveReadingPosition);
-            window.addEventListener("beforeunload", () => saveReadingPositionNow(true));
+            window.addEventListener("beforeunload", () => {
+                saveReadingPositionNow(true);
+                TTSEngine.stop();
+            });
         })();
     </script>
 }
