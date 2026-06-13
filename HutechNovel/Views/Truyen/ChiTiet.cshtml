@@ -306,7 +306,7 @@
     <div class="section-kicker">Đánh giá và bình luận</div>
     <h2 class="section-title mb-3">Cảm nhận của độc giả</h2>
     <div class="rating-summary mb-3">
-        <span class="text-warning" id="ratingAverage"><i class="fas fa-star"></i> @Model.AverageRating.ToString("0.0")/5.0</span>
+        <span class="text-warning" id="ratingAverage"><i class="fas fa-star"></i> @Model.Truyen.TongSoSao sao</span>
         <span class="muted" id="ratingTotal">(@Model.TotalRatings đánh giá)</span>
     </div>
 
@@ -610,8 +610,8 @@
                                 paintStars(savedRating);
 
                                 const ratingAverage = document.getElementById('ratingAverage');
-                                if (ratingAverage && result.diemMoi !== undefined) {
-                                    ratingAverage.innerHTML = `<i class="fas fa-star"></i> ${Number(result.diemMoi).toFixed(1)}/5.0`;
+                                if (ratingAverage && result.tongSao !== undefined) {
+                                    ratingAverage.innerHTML = `<i class="fas fa-star"></i> ${result.tongSao} sao`;
                                 }
 
                                 const ratingTotal = document.getElementById('ratingTotal');

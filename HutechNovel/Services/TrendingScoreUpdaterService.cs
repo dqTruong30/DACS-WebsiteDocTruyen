@@ -65,7 +65,7 @@ namespace HutechNovel.Services
                                 + (recentViews * 1.0) 
                                 + (totalBoosts * 2.0)
                                 + (recentBoosts * 10.0) 
-                                + (story.DiemDanhGiaTrungBinh * 5.0);
+                                + (story.TongSoSao * 1.0);
                 
                 story.DiemTrending = newScore;
             }

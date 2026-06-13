@@ -23,7 +23,7 @@ namespace HutechNovel.Controllers
 
             query = type switch
             {
-                "rating" => query.OrderByDescending(t => t.DiemDanhGiaTrungBinh),
+                "rating" => query.OrderByDescending(t => t.TongSoSao),
                 "trending" => query.OrderByDescending(t => t.DiemTrending),
                 "boost" => query.OrderByDescending(t => t.DayTruyens.Count),
                 _ => query.OrderByDescending(t => t.TongLuotXem)
