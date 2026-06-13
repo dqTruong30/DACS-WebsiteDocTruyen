@@ -54,11 +54,13 @@ namespace HutechNovel.Controllers
 
             var systemPrompt = @"Bạn là Trợ lý AI Độc Quyền của website đọc truyện chữ HutechNovel.
 QUY TẮC BẮT BUỘC:
-1. Bạn có thể sử dụng các CÔNG CỤ (Tools) được cung cấp để tra cứu cơ sở dữ liệu (Tìm truyện, Lấy tóm tắt).
-2. Luôn chủ động GỌI HÀM (Function Call) nếu người dùng yêu cầu tìm truyện theo tên, thể loại, trạng thái, lượt xem, hoặc yêu cầu xem tóm tắt truyện.
-3. KHI NHẮC ĐẾN TÊN TRUYỆN, LUÔN LUÔN tạo link Markdown có dạng `[Tên Truyện](/Truyen/ChiTiet/{MaTruyen})` để người dùng có thể bấm vào.
-4. KHÔNG ĐƯỢC tự bịa đặt thông tin truyện. Nếu hàm trả về không có kết quả, hãy nói không tìm thấy.
-5. Từ chối trả lời các câu hỏi ngoài lề (toán, code, thời tiết...).
+1. Bạn có thể sử dụng các CÔNG CỤ (Tools) được cung cấp để tra cứu cơ sở dữ liệu (Tìm truyện, Lấy tóm tắt, Tìm kiếm nội dung bên trong truyện).
+2. Luôn chủ động GỌI HÀM (Function Call) nếu người dùng yêu cầu tìm truyện theo tên, thể loại, trạng thái, hoặc yêu cầu xem tóm tắt truyện.
+3. Nếu người dùng yêu cầu tìm kiếm nội dung, đoạn trích, hoặc chi tiết BÊN TRONG truyện mà CHƯA cung cấp tên truyện, BẮT BUỘC phải hỏi lại người dùng là muốn tìm trong truyện nào. Tuyệt đối không tự tìm kiếm hay gọi hàm TimKiemNoiDungTruyen nếu chưa biết tên truyện.
+4. KHI NHẮC ĐẾN TÊN TRUYỆN, LUÔN LUÔN tạo link Markdown có dạng `[Tên Truyện](/Truyen/ChiTiet/{MaTruyen})`.
+5. KHI TRẢ VỀ KẾT QUẢ CHƯƠNG TRUYỆN, LUÔN LUÔN tạo link Markdown có dạng `[Tên Chương](/DocTruyen/{MaTruyen}/{SoChuong})`.
+6. KHÔNG ĐƯỢC tự bịa đặt thông tin. Nếu hàm trả về không có kết quả, hãy nói không tìm thấy.
+7. Từ chối trả lời các câu hỏi ngoài lề (toán, code, thời tiết...).
 
 DỮ LIỆU BỔ SUNG:
 " + contextBuilder.ToString();
@@ -95,6 +97,21 @@ DỮ LIỆU BỔ SUNG:
                                 tenTruyen = new { type = "STRING", description = "Tên chính xác của bộ truyện cần xem." }
                             },
                             required = new[] { "tenTruyen" }
+                        }
+                    },
+                    new
+                    {
+                        name = "TimKiemNoiDungTruyen",
+                        description = "Tìm kiếm một đoạn văn bản, câu nói hoặc chi tiết cụ thể bên trong các chương của một bộ truyện.",
+                        parameters = new
+                        {
+                            type = "OBJECT",
+                            properties = new
+                            {
+                                tuKhoa = new { type = "STRING", description = "Đoạn văn bản, chi tiết hoặc câu nói cần tìm." },
+                                tenTruyen = new { type = "STRING", description = "Tên truyện cần tìm kiếm bên trong." }
+                            },
+                            required = new[] { "tuKhoa", "tenTruyen" }
                         }
                     }
                 }
@@ -160,6 +177,40 @@ DỮ LIỆU BỔ SUNG:
                             SoChuong = truyen.TongSoChuong,
                             TrangThai = truyen.TrangThai.ToString()
                         };
+                    }
+                    else if (functionName == "TimKiemNoiDungTruyen")
+                    {
+                        string? tuKhoa = args.TryGetProperty("tuKhoa", out var tk) ? tk.GetString() : null;
+                        string? tenTruyen = args.TryGetProperty("tenTruyen", out var t) ? t.GetString() : null;
+                        
+                        if (string.IsNullOrEmpty(tuKhoa) || string.IsNullOrEmpty(tenTruyen)) 
+                            return new { message = "Vui lòng cung cấp đủ từ khóa và tên truyện." };
+
+                        var truyen = await _context.Truyens
+                            .FirstOrDefaultAsync(x => x.TieuDe.Contains(tenTruyen));
+
+                        if (truyen == null) return new { message = $"Không tìm thấy truyện nào có tên chứa '{tenTruyen}' để tìm kiếm nội dung." };
+
+                        var query = _context.NoiDungChuongs
+                            .Include(x => x.Chuong)
+                            .Where(x => x.Chuong.MaTruyen == truyen.MaTruyen && x.NoiDung.Contains(tuKhoa));
+
+                        var results = await query.OrderBy(x => x.Chuong.SoChuong)
+                                                 .Take(3)
+                                                 .Select(x => new 
+                                                 { 
+                                                     MaTruyen = truyen.MaTruyen,
+                                                     SoChuong = x.Chuong.SoChuong, 
+                                                     TieuDeChuong = x.Chuong.TieuDe,
+                                                     TrichDoan = x.NoiDung.Length > 200 && x.NoiDung.IndexOf(tuKhoa) != -1
+                                                         ? x.NoiDung.Substring(Math.Max(0, x.NoiDung.IndexOf(tuKhoa) - 50), Math.Min(200, x.NoiDung.Length - Math.Max(0, x.NoiDung.IndexOf(tuKhoa) - 50))) + "..."
+                                                         : x.NoiDung
+                                                 })
+                                                 .ToListAsync();
+
+                        if (!results.Any()) return new { message = $"Không tìm thấy đoạn văn nào chứa '{tuKhoa}' trong truyện '{truyen.TieuDe}'." };
+                        
+                        return results;
                     }
                 }
                 catch (Exception ex)

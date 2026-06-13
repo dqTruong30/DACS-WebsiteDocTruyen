@@ -165,7 +165,7 @@ namespace HutechNovel.Controllers
                     .OrderByDescending(t => t.DiemTrending)
                     .Take(50)
                     .ToListAsync();
-                return ShuffleAndTake(defaultStories, take, userId);
+                return ShuffleAndTake(defaultStories, take, userId, combinedKeywords);
             }
 
             // Tìm truyện phù hợp dựa trên từ khóa (Tên truyện, tác giả, tag) HOẶC preferred tags
@@ -202,7 +202,7 @@ namespace HutechNovel.Controllers
                 scoredStories.AddRange(fillStories);
             }
 
-            return ShuffleAndTake(scoredStories, take, userId);
+            return ShuffleAndTake(scoredStories, take, userId, combinedKeywords);
         }
 
         private int CalculateScore(Truyen t, List<string> keywords, List<int> preferredTagIds)
@@ -217,42 +217,44 @@ namespace HutechNovel.Controllers
             foreach(var kw in keywords)
             {
                 if (kw.StartsWith("author:")) { 
-                    if (lowerAuthor.Contains(kw.Substring(7))) score += 2; 
+                    if (lowerAuthor.Contains(kw.Substring(7))) score += 50; 
                 }
                 else if (kw.StartsWith("summary:")) { 
-                    if (t.MoTa?.ToLower().Contains(kw.Substring(8)) == true) score += 1; 
+                    if (t.MoTa?.ToLower().Contains(kw.Substring(8)) == true) score += 10; 
                 }
                 else if (kw.StartsWith("status:")) { 
-                    if (int.TryParse(kw.Substring(7), out int st) && (int)t.TrangThai == st) score += 2; 
+                    if (int.TryParse(kw.Substring(7), out int st) && (int)t.TrangThai == st) score += 10; 
                 }
                 else if (kw.StartsWith("views:")) { 
-                    if (int.TryParse(kw.Substring(6), out int v) && t.TongLuotXem >= v) score += 2; 
+                    if (int.TryParse(kw.Substring(6), out int v) && t.TongLuotXem >= v) score += 10; 
                 }
                 else if (kw.StartsWith("chapters:")) { 
-                    if (int.TryParse(kw.Substring(9), out int c) && t.TongSoChuong >= c) score += 2; 
+                    if (int.TryParse(kw.Substring(9), out int c) && t.TongSoChuong >= c) score += 10; 
                 }
                 else if (kw.StartsWith("tag:")) { 
                     var tagName = kw.Substring(4).ToLower();
-                    if (t.Thes.Any(tag => tag.TenThe.ToLower() == tagName)) score += 2; 
+                    if (t.Thes.Any(tag => tag.TenThe.ToLower() == tagName)) score += 50; 
                 }
                 else if (kw.StartsWith("kw:")) { 
                      var term = kw.Substring(3);
-                     if (lowerTitle.Contains(term) || lowerAuthor.Contains(term)) score += 2;
-                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(term))) score += 1;
+                     if (lowerTitle.Contains(term) || lowerAuthor.Contains(term)) score += 50;
+                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(term))) score += 30;
                 }
                 else {
                      // Tương thích ngược với các keyword tự do user nhập tay
-                     if (lowerTitle.Contains(kw) || lowerAuthor.Contains(kw)) score += 2;
-                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(kw))) score += 1;
+                     if (lowerTitle.Contains(kw) || lowerAuthor.Contains(kw)) score += 50;
+                     if (t.Thes.Any(tag => tag.TenThe.ToLower().Contains(kw))) score += 30;
                 }
             }
             return score;
         }
 
-        private List<Truyen> ShuffleAndTake(List<Truyen> source, int take, string userId)
+        private List<Truyen> ShuffleAndTake(List<Truyen> source, int take, string userId, List<string> keywords = null)
         {
-            // Seed cố định cho mỗi ngày kết hợp User ID (hoặc IP)
-            int seed = DateTime.Today.DayOfYear ^ (userId?.GetHashCode() ?? 0);
+            // Seed cố định cho mỗi ngày kết hợp User ID (hoặc IP), CỘNG THÊM TỪ KHÓA
+            // Để khi người dùng đổi từ khóa thì list truyện cũng thay đổi ngay lập tức
+            int kwHash = keywords != null && keywords.Any() ? string.Join(",", keywords).GetHashCode() : 0;
+            int seed = DateTime.Today.DayOfYear ^ (userId?.GetHashCode() ?? 0) ^ kwHash;
             var rng = new Random(seed);
             
             return source.OrderBy(x => rng.Next()).Take(take).ToList();

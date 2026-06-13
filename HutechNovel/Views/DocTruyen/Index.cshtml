@@ -534,13 +534,20 @@
             }
 
             function applyTextReplacements() {
-                let rawCopy = serverRaw;
-                let convCopy = serverConv;
+                // Chuẩn hóa Unicode (NFC) để tránh lỗi gõ tiếng Việt (VD: ệ = e + dấu nặng)
+                let rawCopy = serverRaw ? serverRaw.normalize('NFC') : "";
+                let convCopy = serverConv ? serverConv.normalize('NFC') : "";
 
                 if (replaceRules.length > 0) {
                     replaceRules.forEach(rule => {
-                        const escapedOriginal = rule.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const regex = new RegExp(escapedOriginal, 'g');
+                        let orig = (rule.original || "").normalize('NFC').trim();
+                        if (!orig) return;
+
+                        let escapedOriginal = orig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Hỗ trợ mọi khoảng trắng (space thường, tab, khoảng trắng HTML...)
+                        escapedOriginal = escapedOriginal.replace(/\s+/g, '(?:\\s|&nbsp;)+');
+
+                        const regex = new RegExp(escapedOriginal, 'gi');
                         rawCopy = rawCopy.replace(regex, rule.replacement);
                         convCopy = convCopy.replace(regex, rule.replacement);
                     });

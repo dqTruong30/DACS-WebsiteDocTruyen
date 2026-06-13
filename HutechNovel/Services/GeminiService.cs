@@ -32,8 +32,12 @@ namespace HutechNovel.Services
                 new { role = "user", parts = new[] { new { text = prompt } } }
             };
 
-            while (true)
+            int maxIterations = 5;
+            int currentIteration = 0;
+
+            while (currentIteration < maxIterations)
             {
+                currentIteration++;
                 object payload;
                 if (!string.IsNullOrEmpty(systemInstruction))
                 {
@@ -111,6 +115,8 @@ namespace HutechNovel.Services
                 
                 return "Xin lỗi, mình đang gặp sự cố khi phân tích phản hồi từ AI.";
             }
+
+            return "Hệ thống tạm dừng do quá trình suy nghĩ và tra cứu dữ liệu diễn ra quá lâu. Vui lòng thử hỏi một cách cụ thể hơn nhé.";
         }
     }
 }
